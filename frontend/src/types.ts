@@ -39,3 +39,33 @@ export interface WordPrediction {
   word: string;
   score: number;
 }
+
+export interface ModelConfig {
+  id: string;
+  name: string;
+  description: string;
+  parameters: string;
+  tokenizer: string;
+  architecture: string;
+  defaultLayers: number;
+  defaultHeads: number;
+  icon?: string;
+}
+
+export interface TrainingConfig {
+  epochs: number;
+  batchSize: number;
+  learningRate: number;
+  maxSequenceLength: number;
+}
+
+export interface TrainingStatus {
+  isTraining: boolean;
+  currentEpoch: number;
+  totalEpochs: number;
+  progress: number;
+  loss?: number;
+  accuracy?: number;
+  elapsedTime?: number;
+  estimatedTimeRemaining?: number;
+}
