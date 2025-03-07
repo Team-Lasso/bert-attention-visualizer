@@ -1,1 +1,1 @@
-# mask-attention-visualizer
+# BERT Attention Visualizer
