@@ -1,13 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { AttentionData, SampleData, WordAttentionData, WordPrediction } from '../types';
 import AttentionMatrix from './AttentionMatrix';
 import AttentionHeadSelector from './AttentionHeadSelector';
-import TokensVisualizer from './TokensVisualizer';
 import SentenceInput from './SentenceInput';
 import WordAttentionBarChart from './WordAttentionBarChart';
 import ParallelView from './ParallelView';
 import WordMasking from './WordMasking';
-import { Brain, Grid, GitBranch, BarChart, Info, Database, Wand2 } from 'lucide-react';
+import { Brain, Grid, GitBranch, BarChart, Info, Database } from 'lucide-react';
 import { generateAttentionData } from '../data/sampleData';
 
 interface AttentionVisualizerProps {
@@ -23,7 +22,7 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({ datasets: ini
   const [maskedTokenIndex, setMaskedTokenIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [customDatasetCount, setCustomDatasetCount] = useState(0);
-  const [activeView, setActiveView] = useState<'matrix' | 'parallel'>('matrix');
+  const [activeView, setActiveView] = useState<'matrix' | 'parallel'>('parallel');
   const [showInfo, setShowInfo] = useState(false);
 
   const currentData: AttentionData = datasets[selectedDatasetIndex].data;
@@ -54,10 +53,6 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({ datasets: ini
     }, 500);
   }, [datasets.length, customDatasetCount]);
 
-  const handleTokenSelect = useCallback((tokenIndex: number) => {
-    setSelectedTokenIndex(prevIndex => prevIndex === tokenIndex ? null : tokenIndex);
-  }, []);
-
   const handleMaskWord = useCallback((tokenIndex: number) => {
     // Don't allow masking [CLS] or [SEP] tokens
     if (currentData.tokens[tokenIndex].text === "[CLS]" || currentData.tokens[tokenIndex].text === "[SEP]") {
@@ -65,6 +60,22 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({ datasets: ini
     }
     setMaskedTokenIndex(prevIndex => prevIndex === tokenIndex ? null : tokenIndex);
   }, [currentData.tokens]);
+
+  // Add event listener for token selection from ParallelView
+  useEffect(() => {
+    const handleTokenSelection = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && 'tokenIndex' in customEvent.detail) {
+        setSelectedTokenIndex(customEvent.detail.tokenIndex);
+      }
+    };
+
+    window.addEventListener('token-selection-change', handleTokenSelection);
+
+    return () => {
+      window.removeEventListener('token-selection-change', handleTokenSelection);
+    };
+  }, []);
 
   // Get predictions for the masked token
   const maskPredictions: WordPrediction[] | null = maskedTokenIndex !== null && currentData.maskPredictions
@@ -85,6 +96,7 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({ datasets: ini
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50">
       <div className="flex flex-col space-y-6 max-w-6xl mx-auto p-6">
+        {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white rounded-xl shadow-md p-5 border border-indigo-100">
           <div className="flex items-center space-x-3">
             <div className="bg-indigo-600 p-2 rounded-lg">
@@ -106,22 +118,16 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({ datasets: ini
           </div>
         </header>
 
-        <SentenceInput onSentenceSubmit={handleSentenceSubmit} isLoading={isProcessing} />
+        {/* Input Section */}
+        <div className="flex flex-col space-y-4">
+          <SentenceInput onSentenceSubmit={handleSentenceSubmit} isLoading={isProcessing} />
 
-        <TokensVisualizer
-          tokens={currentData.tokens}
-          onTokenSelect={handleTokenSelect}
-          selectedTokenIndex={selectedTokenIndex}
-        />
 
-        <WordMasking
-          tokens={currentData.tokens}
-          onMaskWord={handleMaskWord}
-          maskedTokenIndex={maskedTokenIndex}
-          predictions={maskPredictions}
-        />
+        </div>
 
+        {/* Main Visualization Area */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {/* Sidebar */}
           <div className="md:col-span-1 space-y-4">
             <AttentionHeadSelector
               layers={currentData.layers}
@@ -150,8 +156,8 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({ datasets: ini
                 <button
                   onClick={() => setActiveView('matrix')}
                   className={`flex items-center px-4 py-3 rounded-lg text-sm transition-colors ${activeView === 'matrix'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   <Grid size={18} className="mr-2" />
@@ -160,8 +166,8 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({ datasets: ini
                 <button
                   onClick={() => setActiveView('parallel')}
                   className={`flex items-center px-4 py-3 rounded-lg text-sm transition-colors ${activeView === 'parallel'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   <GitBranch size={18} className="mr-2" />
@@ -170,60 +176,79 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({ datasets: ini
               </div>
             </div>
           </div>
-          <div className="md:col-span-3 bg-white rounded-xl shadow-md p-5 border border-indigo-100">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+
+          {/* Main Visualization Container */}
+          <div className="md:col-span-3 flex flex-col space-y-6">
+            {/* Visualization View */}
+            <div className="bg-white rounded-xl shadow-md p-5 border border-indigo-100">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                  {activeView === 'matrix' ? (
+                    <Grid size={20} className="mr-2 text-indigo-600" />
+                  ) : (
+                    <GitBranch size={20} className="mr-2 text-indigo-600" />
+                  )}
+                  {activeView === 'matrix' ? 'Attention Matrix' : 'Attention Flow'}
+                </h2>
+                <div className="text-sm text-gray-500 flex items-center">
+                  <span className="mr-3">Layer {selectedLayer + 1}, Head {selectedHead + 1}</span>
+                  {selectedTokenIndex !== null && (
+                    <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full">
+                      Focus: "{currentData.tokens[selectedTokenIndex].text}"
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-center items-center">
                 {activeView === 'matrix' ? (
-                  <Grid size={20} className="mr-2 text-indigo-600" />
+                  <AttentionMatrix
+                    tokens={currentData.tokens}
+                    head={currentHead}
+                    width={800}
+                    height={500}
+                    selectedTokenIndex={selectedTokenIndex}
+                  />
                 ) : (
-                  <GitBranch size={20} className="mr-2 text-indigo-600" />
+                  <ParallelView
+                    tokens={currentData.tokens}
+                    head={currentHead}
+                    width={800}
+                    height={500}
+                    selectedTokenIndex={selectedTokenIndex}
+                  />
                 )}
-                {activeView === 'matrix' ? 'Attention Matrix' : 'Attention Flow'}
-              </h2>
-              <div className="text-sm text-gray-500">
-                Layer {selectedLayer + 1}, Head {selectedHead + 1}
               </div>
             </div>
-            <div className="flex justify-center">
-              {activeView === 'matrix' ? (
-                <AttentionMatrix
-                  tokens={currentData.tokens}
-                  head={currentHead}
-                  width={600}
-                  height={500}
-                />
-              ) : (
-                <ParallelView
-                  tokens={currentData.tokens}
-                  head={currentHead}
-                  width={600}
-                  height={500}
-                  selectedTokenIndex={selectedTokenIndex}
-                />
-              )}
-            </div>
+
+            {/* Bar Chart - Always show when token is selected (for both views) */}
+            {selectedTokenIndex !== null && (
+              <div className="bg-white rounded-xl shadow-md p-5 border border-indigo-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                    <BarChart size={20} className="mr-2 text-indigo-600" />
+                    Token Attention Distribution
+                  </h2>
+                </div>
+                <div className="flex justify-center">
+                  <WordAttentionBarChart
+                    data={wordAttentionData}
+                    width={750}
+                    height={300}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {selectedTokenIndex !== null && (
-          <div className="bg-white rounded-xl shadow-md p-5 border border-indigo-100">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-                <BarChart size={20} className="mr-2 text-indigo-600" />
-                Token Attention Distribution
-              </h2>
-              <div className="text-sm bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full">
-                Focus: "{currentData.tokens[selectedTokenIndex].text}"
-              </div>
-            </div>
-            <WordAttentionBarChart
-              data={wordAttentionData}
-              width={800}
-              height={400}
-            />
-          </div>
-        )}
+        <WordMasking
+          tokens={currentData.tokens}
+          onMaskWord={handleMaskWord}
+          maskedTokenIndex={maskedTokenIndex}
+          predictions={maskPredictions}
+        />
 
+        {/* Information Panel */}
         {showInfo && (
           <div className="bg-white rounded-xl shadow-md p-6 border border-indigo-100">
             <div className="flex items-center justify-between mb-4">
@@ -266,7 +291,7 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({ datasets: ini
                   The parallel view shows connections between tokens with curved lines. Thicker lines represent stronger attention connections.
                 </p>
                 <p className="text-gray-600 mb-3 text-sm">
-                  Click on any token to focus on its specific attention patterns. This view is particularly useful for visualizing the flow of attention across the sentence.
+                  Click on any source token to focus on its specific attention patterns. This view is particularly useful for visualizing the flow of attention across the sentence.
                 </p>
               </div>
             </div>
