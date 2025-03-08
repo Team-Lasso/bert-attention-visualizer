@@ -51,6 +51,11 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({
   const [isModelLoading, setIsModelLoading] = useState(false);
   const [showModelSelector, setShowModelSelector] = useState(false);
 
+  // New state for selected prediction
+  const [selectedPrediction, setSelectedPrediction] = useState<string | null>(
+    null
+  );
+
   const currentData: AttentionData = datasets[selectedDatasetIndex].data;
   const currentLayer = currentData.layers[selectedLayer];
   const currentHead = currentLayer.heads[selectedHead];
@@ -101,6 +106,7 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({
       setMaskedTokenIndex((prevIndex) =>
         prevIndex === tokenIndex ? null : tokenIndex
       );
+      setSelectedPrediction(null);
     },
     [currentData.tokens]
   );
@@ -176,8 +182,9 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({
 
   // 添加一个处理预测选择的函数（解决 handleSelectPrediction 错误）
   const handleSelectPrediction = useCallback((word: string) => {
-    // 这里可以添加选中预测词后的处理逻辑，比如替换掩码等
-    console.log(`Selected prediction: ${word}`);
+    // 如果点击的是当前已选中的词，则取消选择；否则选中新词
+    setSelectedPrediction((prev) => (prev === word ? null : word));
+    console.log(`选中的预测词: ${word}`);
   }, []);
 
   return (
@@ -287,13 +294,29 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({
                           onClick={() =>
                             handleSelectPrediction(prediction.word)
                           }
-                          className="flex items-center justify-between bg-white border border-gray-200 hover:bg-indigo-50 rounded-lg p-3 transition-colors"
+                          className={`flex items-center justify-between ${
+                            selectedPrediction === prediction.word
+                              ? "bg-indigo-100 border-indigo-300 shadow-sm"
+                              : "bg-white border-gray-200 hover:bg-indigo-50"
+                          } rounded-lg p-3 transition-colors border`}
                         >
-                          <span className="font-medium">{prediction.word}</span>
+                          <span
+                            className={
+                              selectedPrediction === prediction.word
+                                ? "font-bold"
+                                : "font-medium"
+                            }
+                          >
+                            {prediction.word}
+                          </span>
                           <div className="flex items-center">
                             <div className="w-32 h-4 bg-gray-200 rounded-full overflow-hidden mr-2">
                               <div
-                                className="h-full bg-indigo-600 rounded-full"
+                                className={`h-full ${
+                                  selectedPrediction === prediction.word
+                                    ? "bg-indigo-700"
+                                    : "bg-indigo-600"
+                                } rounded-full`}
                                 style={{ width: `${prediction.score * 100}%` }}
                               ></div>
                             </div>
@@ -331,6 +354,10 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({
               layers={currentData.layers.map((layer, index) => ({
                 ...layer,
                 layerIndex: index,
+                heads: layer.heads.map((head, headIndex) => ({
+                  ...head,
+                  headIndex,
+                })),
               }))}
               selectedLayer={selectedLayer}
               selectedHead={selectedHead}

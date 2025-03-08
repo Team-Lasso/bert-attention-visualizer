@@ -1,7 +1,6 @@
 import {
   AttentionData,
   SampleData,
-  MaskPrediction,
   WordPrediction,
   Token,
 } from "../types";
@@ -371,16 +370,8 @@ export const generateMaskPredictions = (
   const contextSpecificWords: string[] = [];
 
   // Add some context-specific words based on surrounding tokens
-  if (contextTokens.includes("cat") || contextTokens.includes("dog")) {
-    contextSpecificWords.push("pet", "animal", "furry", "cute", "small");
-  }
-
-  if (contextTokens.includes("sat") || contextTokens.includes("stood")) {
-    contextSpecificWords.push("walked", "jumped", "ran", "moved", "fell");
-  }
-
-  if (contextTokens.includes("mat") || contextTokens.includes("chair")) {
-    contextSpecificWords.push("table", "floor", "couch", "bed", "rug");
+  if (tokenIndex === 2) {
+    contextSpecificWords.push("cat", "dog", "pet", "animal", "furry", "cute", "small");
   }
 
   // Combine common and context-specific words
