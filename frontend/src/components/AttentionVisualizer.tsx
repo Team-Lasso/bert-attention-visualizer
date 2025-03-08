@@ -3,10 +3,10 @@ import { AttentionData, SampleData, WordAttentionData, WordPrediction } from '..
 import AttentionMatrix from './AttentionMatrix';
 import AttentionHeadSelector from './AttentionHeadSelector';
 import TokensVisualizer from './TokensVisualizer';
-import SentenceInput from './SentenceInput';
-import WordAttentionBarChart from './WordAttentionBarChart';
 import ParallelView from './ParallelView';
 import WordMasking from './WordMasking';
+import PredictionBarChart from './PredictionBarChart';
+import CustomSentenceSection from './CustomSentenceSection';
 import { Brain, Grid, GitBranch, BarChart, Info, Database, Wand2 } from 'lucide-react';
 import { generateAttentionData } from '../data/sampleData';
 
@@ -106,20 +106,42 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({ datasets: ini
           </div>
         </header>
 
-        <SentenceInput onSentenceSubmit={handleSentenceSubmit} isLoading={isProcessing} />
-
         <TokensVisualizer
           tokens={currentData.tokens}
           onTokenSelect={handleTokenSelect}
           selectedTokenIndex={selectedTokenIndex}
         />
 
-        <WordMasking
-          tokens={currentData.tokens}
-          onMaskWord={handleMaskWord}
-          maskedTokenIndex={maskedTokenIndex}
-          predictions={maskPredictions}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* 左侧：自定义句子和词掩码区域 */}
+          <div className="h-[500px]">
+            <CustomSentenceSection 
+              tokens={currentData.tokens}
+              onSentenceSubmit={handleSentenceSubmit}
+              isProcessing={isProcessing}
+              onMaskWord={handleMaskWord}
+              maskedTokenIndex={maskedTokenIndex}
+            />
+          </div>
+
+          {/* 中间：词掩码区域 */}
+          <div className="p-5 bg-white rounded-xl shadow-md border border-indigo-100 h-[500px]">
+            <WordMasking
+              tokens={currentData.tokens}
+              onMaskWord={handleMaskWord}
+              maskedTokenIndex={maskedTokenIndex}
+            />
+          </div>
+
+          {/* 右侧：预测条形图区域 */}
+          <div className="p-5 bg-white rounded-xl shadow-md border border-indigo-100 h-[500px]">
+            <PredictionBarChart 
+              predictions={maskPredictions} 
+              width={350} 
+              height={440}
+            />
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="md:col-span-1 space-y-4">
@@ -248,25 +270,7 @@ const AttentionVisualizer: React.FC<AttentionVisualizerProps> = ({ datasets: ini
               <div>
                 <h3 className="text-md font-medium text-gray-700 mb-2">Word Masking</h3>
                 <p className="text-gray-600 mb-3 text-sm">
-                  BERT is pre-trained with a masked language modeling objective. When words are masked, the model predicts the original content based on the surrounding context.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-md font-medium text-gray-700 mb-2">Matrix View</h3>
-                <p className="text-gray-600 mb-3 text-sm">
-                  The matrix visualization shows attention weights between tokens as a heatmap. Each cell represents how much a token (row) attends to another token (column).
-                </p>
-                <p className="text-gray-600 mb-3 text-sm">
-                  Darker colors indicate higher attention weights. The percentages show the relative attention weight, with each row summing to 100%.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-md font-medium text-gray-700 mb-2">Parallel View</h3>
-                <p className="text-gray-600 mb-3 text-sm">
-                  The parallel view shows connections between tokens with curved lines. Thicker lines represent stronger attention connections.
-                </p>
-                <p className="text-gray-600 mb-3 text-sm">
-                  Click on any token to focus on its specific attention patterns. This view is particularly useful for visualizing the flow of attention across the sentence.
+                  BERT was trained on masked language modeling: tokens are randomly masked, and the model learns to predict them from context. Click any token to see what BERT would predict for that position.
                 </p>
               </div>
             </div>

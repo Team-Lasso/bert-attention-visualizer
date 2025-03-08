@@ -17,11 +17,11 @@ const SentenceInput: React.FC<SentenceInputProps> = ({ onSentenceSubmit, isLoadi
   };
 
   return (
-    <div className="p-5 bg-white rounded-xl shadow-md border border-indigo-100">
-      <h3 className="text-lg font-medium text-gray-900 mb-3">Enter Your Own Sentence</h3>
-      <p className="text-sm text-gray-500 mb-4">Type a sentence to analyze its attention patterns</p>
-      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-grow">
+    <div className="flex flex-col">
+      <h3 className="text-lg font-medium text-gray-900 mb-2">Enter Your Own Sentence</h3>
+      <p className="text-sm text-gray-500 mb-3">Type a sentence to analyze</p>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div className="relative">
           <input
             type="text"
             value={sentence}
@@ -42,7 +42,7 @@ const SentenceInput: React.FC<SentenceInputProps> = ({ onSentenceSubmit, isLoadi
         </div>
         <button
           type="submit"
-          className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={!sentence.trim() || isLoading}
         >
           {isLoading ? (
