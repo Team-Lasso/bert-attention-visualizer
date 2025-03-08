@@ -14,9 +14,13 @@ export interface Layer {
 }
 
 export interface AttentionData {
-  tokens: Token[];
-  layers: Layer[];
-  maskPredictions?: MaskPrediction[];
+  tokens: { text: string }[];
+  layers: {
+    heads: {
+      attention: number[][];
+    }[];
+  }[];
+  maskPredictions?: MaskPredictionData[];
 }
 
 export interface SampleData {
@@ -30,7 +34,7 @@ export interface WordAttentionData {
   attentionValues: number[];
 }
 
-export interface MaskPrediction {
+export interface MaskPredictionData {
   tokenIndex: number;
   predictions: WordPrediction[];
 }
