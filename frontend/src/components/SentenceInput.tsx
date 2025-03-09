@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Send } from 'lucide-react';
 
+/*
+被SentenceInputSection.tsx调用
+*/
 interface SentenceInputProps {
   onSentenceSubmit: (sentence: string) => void;
   isLoading: boolean;
@@ -34,7 +37,7 @@ const SentenceInput: React.FC<SentenceInputProps> = ({ onSentenceSubmit, isLoadi
             <button
               type="button"
               onClick={() => setSentence('')}
-              className="absolute right-14 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               ×
             </button>

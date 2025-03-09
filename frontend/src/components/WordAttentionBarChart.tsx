@@ -2,6 +2,9 @@ import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { WordAttentionData } from '../types';
 
+/*
+被VisualizationDisplay.tsx调用
+*/
 interface WordAttentionBarChartProps {
   data: WordAttentionData;
   width: number;

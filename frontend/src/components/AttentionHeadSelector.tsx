@@ -2,6 +2,9 @@ import React from 'react';
 import { Layer } from '../types';
 import { Layers, Cpu } from 'lucide-react';
 
+/*
+被AttentionVisualizer.tsx调用
+*/
 interface AttentionHeadSelectorProps {
   layers: Layer[];
   selectedLayer: number;

@@ -4,6 +4,10 @@ import { Token, WordPrediction } from '../types';
 import WordMasking from './WordMasking';
 import { FileText } from 'lucide-react';
 
+/*
+被AttentionVisualizer.tsx调用
+这个function是用来输入自定义句子的
+*/
 interface CustomSentenceSectionProps {
     tokens: Token[];
     onSentenceSubmit: (sentence: string) => void;

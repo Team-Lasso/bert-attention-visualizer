@@ -1,10 +1,10 @@
-import AttentionVisualizer from './components/AttentionVisualizer';
-import { sampleDatasets } from './data/sampleData';
+import AttentionVisualizerPage from "./components/AttentionVisualizerPage";
+import { sampleDatasets } from "./data/sampleData";
 
 function App() {
   return (
     <div className="min-h-screen bg-gray-100">
-      <AttentionVisualizer datasets={sampleDatasets} />
+      <AttentionVisualizerPage datasets={sampleDatasets} />
     </div>
   );
 }

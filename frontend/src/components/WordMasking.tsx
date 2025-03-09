@@ -2,6 +2,9 @@ import React from 'react';
 import { Token } from '../types';
 import { Wand2 } from 'lucide-react';
 
+/*
+被WordMaskingSection.tsx调用
+*/
 interface WordMaskingProps {
     tokens: Token[];
     onMaskWord: (tokenIndex: number) => void;
