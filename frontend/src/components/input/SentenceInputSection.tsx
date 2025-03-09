@@ -32,7 +32,7 @@ const SentenceInputSection: React.FC<SentenceInputSectionProps> = ({
 
       {/* 这部分是输入句子的组件， */}
       <SentenceInput
-        onSentenceSubmit={onSentenceSubmit}
+        onSentenceSubmit={onSentenceSubmit} //这属于是父组件向子组件传递的函数，告诉子组件当用户输入句子后，应该调用哪个函数
         isLoading={isLoading}
       />
     </div>

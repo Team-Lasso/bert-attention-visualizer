@@ -12,7 +12,7 @@ import { useVisualizationControls } from "./useVisualizationControls";
 const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
   // 加载数据集管理钩子
   const datasetManager = useDatasetManager(initialDatasets);
-  const { currentData, hasUserInput } = datasetManager;
+  const { currentData, hasUserInput } = datasetManager; //这个里面的currentData保存了useDatasetManager中return里面的currentData
 
   // 加载模型选择钩子
   const modelSelection = useModelSelection();
@@ -37,11 +37,17 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
   ]);
 
   // 处理句子提交
+  // 在刚才的分析中我们知道了，handleSentenceSubmit是用来处理用户输入的句子的
+  // 其中的onDatasetAdded是一个可选参数，默认值是一个空函数
+  //我们在这里给onDatasetAdded传入了tokenInteraction.resetTokenInteractions
+  // 所以，当用户输入句子后，会调用tokenInteraction.resetTokenInteractions
+  // 然后，tokenInteraction.resetTokenInteractions会重置token交互状态
+
   const handleSentenceSubmit = useCallback(
     (sentence: string) => {
       datasetManager.handleSentenceSubmit(sentence, () => {
         // 重置token相关状态
-        tokenInteraction.resetTokenInteractions();
+        tokenInteraction.resetTokenInteractions(); 
       });
     },
     [

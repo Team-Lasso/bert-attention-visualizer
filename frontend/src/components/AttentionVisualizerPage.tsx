@@ -3,6 +3,8 @@ import useAttentionVisualizer from "../hooks/useAttentionVisualizer";
 import { SampleData } from "../types";
 import { pretrainedModels } from "../data/pretrainedModels";
 
+//todo: 3/9 明天需要去分析 currentData 这个组件里面到底是什么
+
 // Layout Components
 import AppHeader from "./layout/AppHeader";
 import InfoPanel from "./layout/InfoPanel";
@@ -101,7 +103,7 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
             currentModelName={currentModel.name}
           />
 
-          <WordMaskingSection
+          <WordMaskingSection 
             tokens={tokensWithIndex}
             onMaskWord={handleMaskWord}
             maskedTokenIndex={maskedTokenIndex}

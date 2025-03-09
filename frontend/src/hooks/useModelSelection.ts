@@ -28,7 +28,7 @@ export const useModelSelection = () => {
   const handleLoadModel = useCallback((onModelLoaded: () => void) => {
     setIsModelLoading(true);
 
-    // 模拟加载延迟（实际项目中这里会有真实的模型加载逻辑）
+    // 模拟加载延迟（实际项目中这里会有真实的模型加载逻辑）//todo
     setTimeout(() => {
       setIsModelLoading(false);
       setShowModelSelector(false);

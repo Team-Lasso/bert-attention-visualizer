@@ -5,6 +5,8 @@ import AttentionMatrix from "../AttentionMatrix";
 import ParallelView from "../ParallelView";
 import WordAttentionBarChart from "../WordAttentionBarChart";
 
+//todo: on attention flow section, Jay said he want the stright line, but now it's a curve
+
 interface VisualizationDisplayProps {
   tokens: Token[];
   currentHead: AttentionHead;

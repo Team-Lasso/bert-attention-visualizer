@@ -13,7 +13,7 @@ const SentenceInput: React.FC<SentenceInputProps> = ({ onSentenceSubmit, isLoadi
   const [sentence, setSentence] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault();  //阻止默认行为，防止页面刷新
     if (sentence.trim()) {
       onSentenceSubmit(sentence.trim());
     }

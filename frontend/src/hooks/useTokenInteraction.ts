@@ -17,13 +17,14 @@ export const useTokenInteraction = (currentData: AttentionData) => {
 
   // 重置所有状态
   const resetTokenInteractions = useCallback(() => {
-    setSelectedTokenIndex(null);
-    setMaskedTokenIndex(null);
-    setSelectedPrediction(null);
+    setSelectedTokenIndex(null); // 设置selectedTokenIndex为null
+    setMaskedTokenIndex(null); // 设置maskedTokenIndex为null
+    setSelectedPrediction(null); // 设置selectedPrediction为null
   }, []);
 
   // 单词掩码处理
   const handleMaskWord = useCallback(
+    //用户会传入一个tokenIndex，表示要掩码的token的index
     (tokenIndex: number) => {
       // 不允许掩码特殊token
       if (
