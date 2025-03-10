@@ -16,6 +16,10 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
   // get the current data
   //AttentionData is the type defined in AttentionVisualizer.ts
   
+  //创建一个变量 currentData，类型为 AttentionData
+  //从dataset中获取selectedDatasetIndex对应的data
+  //如果这个index在datasets中不存在，则返回undefined
+  //如果存在，则返回这个data
   const currentData: AttentionData = datasets[selectedDatasetIndex]?.data;
 
   // sentence submission processing

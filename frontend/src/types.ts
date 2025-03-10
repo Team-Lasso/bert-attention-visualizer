@@ -1,3 +1,5 @@
+
+//! this is not a token, but that's fine ... (should rename as word)
 export interface Token {
   text: string;
   index: number;

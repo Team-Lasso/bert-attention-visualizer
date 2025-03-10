@@ -100,14 +100,14 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
           <SentenceInputSection
             onSentenceSubmit={handleSentenceSubmit}
             isLoading={isProcessing}
-            currentModelName={currentModel.name}
+            currentModelName={currentModel.name} //this is for to show to user what model is being used
           />
 
           <WordMaskingSection 
-            tokens={tokensWithIndex}
-            onMaskWord={handleMaskWord}
-            maskedTokenIndex={maskedTokenIndex}
-            hasUserInput={hasUserInput}
+            tokens={tokensWithIndex} //这个不用动
+            onMaskWord={handleMaskWord} //这个是用户选择一个token，然后点击mask按钮，然后调用这个函数
+            maskedTokenIndex={maskedTokenIndex} //这个是用户选择一个token，然后点击mask按钮，然后调用这个函数
+            hasUserInput={hasUserInput} //这个是用户是否输入了句子
           />
 
           <PredictionsSection

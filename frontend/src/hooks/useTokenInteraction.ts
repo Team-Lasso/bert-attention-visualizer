@@ -35,12 +35,19 @@ export const useTokenInteraction = (currentData: AttentionData) => {
       }
 
       // toggle the masked state
+      //这个prevIndex是maskedTokenIndex的值，在第一次调用时，prevIndex为null
+      //但是我们会不停的更新prevIndex的值
+      //如果prevIndex的值和tokenIndex的值相等，则将maskedTokenIndex设置为null 这表示用户没有选择任何token
+      //如果prevIndex的值和tokenIndex的值不相等，则将maskedTokenIndex设置为tokenIndex 这表示用户选择了这个token
       setMaskedTokenIndex((prevIndex) =>
         prevIndex === tokenIndex ? null : tokenIndex
       );
 
       // reset the prediction selection
+      //清空是为了避免用户选择了一个token，但是之前的prediction还在
       setSelectedPrediction(null);
+      
+      //todo:这里我们需要调用fill-mask和prediction之类的。
     },
     [currentData?.tokens]
   );

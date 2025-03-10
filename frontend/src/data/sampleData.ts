@@ -166,13 +166,13 @@ export const generateAttentionData = (sentence: string): AttentionData => {
   // Split sentence into tokens and add BERT special tokens //!: here is fake token , but in real case we could change this 
   const rawTokens = sentence.split(/\s+/);
 
-  // Create tokens array with [CLS] at the beginning and [SEP] at the end
-  const tokenTexts = ["[CLS]", ...rawTokens, "[SEP]"]; //!: this is why each word is a token
+  // split the sentence into words
+  const tokenTexts = [...rawTokens]; //!: this is why each word is a token
   const tokens: Token[] = tokenTexts.map((text, index) => ({ text, index }));
 
-  // Generate sample attention matrices for each layer and head
-  const layers = Array.from({ length: 12 }, (_, layerIndex) => {
-    const heads = Array.from({ length: 12 }, (_, headIndex) => {
+  // Generate sample attention matrices for each layer and head //!: try to ignore this part for now
+  const layers = Array.from({ length: 12 }, (_, layerIndex) => { //! this is also hardcoded
+    const heads = Array.from({ length: 12 }, (_, headIndex) => { //! this is also hardcoded
       // Create a sample attention matrix for this head
       const attention = Array.from({ length: tokens.length }, () =>
         Array.from({ length: tokens.length }, () => Math.random())
