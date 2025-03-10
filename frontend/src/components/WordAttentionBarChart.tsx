@@ -3,7 +3,7 @@ import * as d3 from 'd3';
 import { WordAttentionData } from '../types';
 
 /*
-被VisualizationDisplay.tsx调用
+this component is called in VisualizationDisplay.tsx
 */
 interface WordAttentionBarChartProps {
   data: WordAttentionData;

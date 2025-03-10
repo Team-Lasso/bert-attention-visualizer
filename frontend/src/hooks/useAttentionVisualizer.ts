@@ -6,27 +6,27 @@ import { useTokenInteraction } from "./useTokenInteraction";
 import { useVisualizationControls } from "./useVisualizationControls";
 
 /**
- * 主钩子，整合其他小钩子
- * 提供完整的注意力可视化功能
+ * main hook, integrate other small hooks
+ * provide complete attention visualization functionality
  */
 const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
-  // 加载数据集管理钩子
+  // load the dataset manager hook
   const datasetManager = useDatasetManager(initialDatasets);
-  const { currentData, hasUserInput } = datasetManager; //这个里面的currentData保存了useDatasetManager中return里面的currentData
+  const { currentData, hasUserInput } = datasetManager; //this contains the currentData and hasUserInput
 
-  // 加载模型选择钩子
+  // load the model selection hook
   const modelSelection = useModelSelection();
 
-  // 加载token交互钩子
+  // load the token interaction hook
   const tokenInteraction = useTokenInteraction(currentData);
 
-  // 加载可视化控制钩子
+  // load the visualization control hook
   const visualizationControls = useVisualizationControls(currentData);
 
-  // 处理模型加载后的重置操作
+  // handle the reset operation after the model is loaded
   const handleLoadModel = useCallback(() => {
     modelSelection.handleLoadModel(() => {
-      // 重置token交互和可视化控制状态
+      // reset the token interaction and visualization control state
       tokenInteraction.resetTokenInteractions();
       visualizationControls.resetViewState();
     });
@@ -36,17 +36,17 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
     visualizationControls.resetViewState,
   ]);
 
-  // 处理句子提交
-  // 在刚才的分析中我们知道了，handleSentenceSubmit是用来处理用户输入的句子的
-  // 其中的onDatasetAdded是一个可选参数，默认值是一个空函数
-  //我们在这里给onDatasetAdded传入了tokenInteraction.resetTokenInteractions
-  // 所以，当用户输入句子后，会调用tokenInteraction.resetTokenInteractions
-  // 然后，tokenInteraction.resetTokenInteractions会重置token交互状态
+  // handle the sentence submission
+  // in the previous analysis, we know that handleSentenceSubmit is used to handle the user's input sentence
+  // the onDatasetAdded is an optional parameter, the default value is an empty function
+  // we here pass tokenInteraction.resetTokenInteractions to onDatasetAdded
+  // so, when the user inputs a sentence, tokenInteraction.resetTokenInteractions will be called
+  // then, tokenInteraction.resetTokenInteractions will reset the token interaction state
 
   const handleSentenceSubmit = useCallback(
     (sentence: string) => {
       datasetManager.handleSentenceSubmit(sentence, () => {
-        // 重置token相关状态
+        // reset the token related state
         tokenInteraction.resetTokenInteractions(); 
       });
     },
@@ -56,13 +56,13 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
     ]
   );
 
-  // 计算选中token的注意力数据
+  // calculate the attention data of the selected token
   const wordAttentionData: WordAttentionData =
     visualizationControls.getWordAttentionData(
       tokenInteraction.selectedTokenIndex
     );
 
-  // 生成用于可视化的tokens数组
+  // generate the tokens array for visualization
   const tokensWithIndex =
     currentData?.tokens.map((token, index) => ({
       ...token,
@@ -70,19 +70,19 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
     })) || [];
 
   return {
-    // 数据集管理
+    // dataset manager
     ...datasetManager,
 
-    // 模型选择
+    // model selection
     ...modelSelection,
 
-    // Token交互
+    // token interaction
     ...tokenInteraction,
 
-    // 可视化控制
+    // visualization control
     ...visualizationControls,
 
-    // 组合功能和计算属性
+    // combine the functionality and calculation properties
     currentModel: modelSelection.currentModel,
     wordAttentionData,
     tokensWithIndex,

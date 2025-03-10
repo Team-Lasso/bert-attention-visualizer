@@ -2,8 +2,8 @@ import React from "react";
 import { WordPrediction } from "../types";
 
 /*
-被AttentionVisualizer.tsx调用
-这个function是用来显示掩码单词预测的
+this component is called in AttentionVisualizer.tsx
+this function is used to show the masked word predictions
 */
 interface MaskedWordPredictionsProps {
   tokens: { text: string }[];

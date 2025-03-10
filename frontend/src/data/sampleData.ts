@@ -212,7 +212,7 @@ export const generateAttentionData = (sentence: string): AttentionData => {
     return { layerIndex, heads };
   });
 
-  // Generate mask predictions for each token
+  // Generate mask predictions for each token //? what's the problem here?
   const maskPredictions: MaskPrediction[] = tokens.map((token) => ({
     tokenIndex: token.index,
     predictions: generateSamplePredictions(token.index, tokenTexts),

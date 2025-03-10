@@ -2,7 +2,7 @@ import React from "react";
 import SentenceInput from "../SentenceInput";
 
 
-//这个组件是 input sentence整个的组件，这个组件包含两个部分，一个是输入框，一个是当前模型
+//this component is the whole input sentence component, it contains two parts, one is the input box, one is the current model
 interface SentenceInputSectionProps {
   onSentenceSubmit: (sentence: string) => void;
   isLoading: boolean;
@@ -30,9 +30,9 @@ const SentenceInputSection: React.FC<SentenceInputSectionProps> = ({
         </div>
       </div>
 
-      {/* 这部分是输入句子的组件， */}
+      {/* this is the input sentence component, it is called in AttentionVisualizerPage.tsx */}
       <SentenceInput
-        onSentenceSubmit={onSentenceSubmit} //这属于是父组件向子组件传递的函数，告诉子组件当用户输入句子后，应该调用哪个函数
+        onSentenceSubmit={onSentenceSubmit} //this is the function that is passed to the SentenceInput component, it is called when the user inputs a sentence
         isLoading={isLoading}
       />
     </div>

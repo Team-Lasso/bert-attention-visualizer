@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Send } from 'lucide-react';
 
 /*
-被SentenceInputSection.tsx调用
+this component is called in SentenceInputSection.tsx
 */
 interface SentenceInputProps {
   onSentenceSubmit: (sentence: string) => void;
@@ -13,7 +13,7 @@ const SentenceInput: React.FC<SentenceInputProps> = ({ onSentenceSubmit, isLoadi
   const [sentence, setSentence] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();  //阻止默认行为，防止页面刷新
+    e.preventDefault();  //prevent the default behavior, prevent the page from refreshing
     if (sentence.trim()) {
       onSentenceSubmit(sentence.trim());
     }

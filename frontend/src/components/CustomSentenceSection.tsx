@@ -1,12 +1,12 @@
 import React from 'react';
 import SentenceInput from './SentenceInput';
-import { Token, WordPrediction } from '../types';
+import { Token} from '../types';
 import WordMasking from './WordMasking';
 import { FileText } from 'lucide-react';
 
 /*
-被AttentionVisualizer.tsx调用
-这个function是用来输入自定义句子的
+this component is called in AttentionVisualizer.tsx
+this function is used to input custom sentences
 */
 interface CustomSentenceSectionProps {
     tokens: Token[];

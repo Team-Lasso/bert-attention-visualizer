@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { ModelConfig } from '../types';
 import { Cpu, Server, Book, ExternalLink, Search } from 'lucide-react';
 
-// 这部分是用来选择预训练模型的,比如说bert-base-uncased
-// 被AttentionVisualizerPage.tsx调用
+// this part is used to select the pretrained model, like bert-base-uncased
+// it is called in AttentionVisualizerPage.tsx
 interface PretrainedModelSelectorProps {
     availableModels: ModelConfig[];
     onModelSelect: (modelId: string) => void;

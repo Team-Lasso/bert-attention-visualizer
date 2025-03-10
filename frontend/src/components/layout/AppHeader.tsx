@@ -7,7 +7,7 @@ interface AppHeaderProps {
   onToggleModelSelector: () => void;
 }
 
-// 这部分是用来显示模型名称和模型选择器的
+// this part is used to show the model name and the model selector
 const AppHeader: React.FC<AppHeaderProps> = ({
   currentModelName,
   showModelSelector,

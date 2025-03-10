@@ -2,29 +2,29 @@ import { useState, useCallback } from "react";
 import { AttentionData, WordAttentionData } from "../types";
 
 /**
- * 可视化控制钩子
- * 负责管理可视化视图、层和注意力头的选择
+ * visualization control hook
+ * responsible for managing visualization views, layers and attention heads
  */
 export const useVisualizationControls = (currentData: AttentionData) => {
-  // 状态
+  // states
   const [selectedLayer, setSelectedLayer] = useState(0);
   const [selectedHead, setSelectedHead] = useState(0);
   const [activeView, setActiveView] = useState<"matrix" | "parallel">(
     "parallel"
   );
 
-  // 获取当前层数据
+  // get the current layer data
   const currentLayerData = currentData?.layers[selectedLayer];
 
-  // 获取当前头数据
+  // get the current head data
   const currentHeadData = currentLayerData?.heads[selectedHead];
 
-  // 视图切换
+  // view switch
   const switchView = useCallback((view: "matrix" | "parallel") => {
     setActiveView(view);
   }, []);
 
-  // 计算选中token的注意力数据
+  // calculate the attention data of the selected token
   const getWordAttentionData = useCallback(
     (selectedTokenIndex: number | null): WordAttentionData => {
       if (selectedTokenIndex === null || !currentData || !currentHeadData) {
@@ -44,7 +44,7 @@ export const useVisualizationControls = (currentData: AttentionData) => {
     [currentData, currentHeadData]
   );
 
-  // 重置视图状态为默认值
+  // reset the view state to the default value
   const resetViewState = useCallback(() => {
     setSelectedLayer(0);
     setSelectedHead(0);
@@ -52,14 +52,14 @@ export const useVisualizationControls = (currentData: AttentionData) => {
   }, []);
 
   return {
-    // 状态
+    // states
     selectedLayer,
     selectedHead,
     activeView,
     currentLayerData,
     currentHeadData,
 
-    // 操作函数
+    // operation functions
     setSelectedLayer,
     setSelectedHead,
     switchView: setActiveView,

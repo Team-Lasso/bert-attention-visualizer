@@ -3,7 +3,7 @@ import { Token } from '../types';
 import { Wand2 } from 'lucide-react';
 
 /*
-被WordMaskingSection.tsx调用
+used by WordMaskingSection.tsx
 */
 interface WordMaskingProps {
     tokens: Token[];

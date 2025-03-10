@@ -30,21 +30,21 @@ interface AttentionVisualizerPageProps {
 const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
   datasets,
 }) => {
-  // 使用重构后的钩子
+  // use the hook to get the data and the processing status
   const {
-    // 数据和处理状态
+    // data and processing status
     currentData,
     isProcessing,
     hasUserInput,
 
-    // 模型信息
+    // model information
     currentModel,
     showModelSelector,
     isModelLoading,
     selectedModelId,
     setShowModelSelector,
 
-    // 视图控制
+    // view control
     selectedLayer,
     selectedHead,
     activeView,
@@ -53,18 +53,18 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
     setSelectedHead,
     switchView,
 
-    // Token交互
+    // Token interaction
     selectedTokenIndex,
     maskedTokenIndex,
     selectedPrediction,
     selectedTokenText,
     maskPredictions,
 
-    // 生成的数据
+    // generated data
     tokensWithIndex,
     wordAttentionData,
 
-    // 处理函数
+    // processing functions
     handleSentenceSubmit,
     handleMaskWord,
     handleModelSelect,
