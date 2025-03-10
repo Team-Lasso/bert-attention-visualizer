@@ -33,7 +33,7 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
         const newAttentionData = generateAttentionData(sentence);
         const newDatasetName = `Custom ${customDatasetCount + 1}: "${
           sentence.length > 30 ? sentence.substring(0, 27) + "..." : sentence
-        }"`;
+        }"`; //? 这里是生成数据集名称，但是我们要数据集干嘛？
 
         // 将数据集添加到datasets中
         //新增{name: newDatasetName, data: newAttentionData}到datasets中
@@ -46,11 +46,11 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
           },
         ]);
 
-        // 更新customDatasetCount 让其+1
-        setCustomDatasetCount((prev) => prev + 1);
+        // 更新customDatasetCount 让其+1 这是记录用户输入的次数
+        setCustomDatasetCount((prev) => prev + 1); //? what's the point for having this? we are fully front-end, we don't need to count the number of user input
 
-        // 更新selectedDatasetIndex 让其等于datasets的长度
-        setSelectedDatasetIndex(datasets.length);
+        // 更新selectedDatasetIndex 让其等于datasets的长度 这个是指针，指向datasets中的最后一个数据
+        setSelectedDatasetIndex(datasets.length); //? what's the point for having this? we are fully front-end, we don't need to count the number of user input
 
         // 此时，数据集已经更新，isProcessing状态设置为false
         setIsProcessing(false);
@@ -62,7 +62,7 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
     [datasets.length, customDatasetCount] // 依赖项，当datasets.length或customDatasetCount发生变化时，重新创建新的函数
   );
 
-  // 切换数据集
+  // 切换数据集 //? do we need this?
   const selectDataset = useCallback(
     (index: number) => {
       if (index >= 0 && index < datasets.length) {
