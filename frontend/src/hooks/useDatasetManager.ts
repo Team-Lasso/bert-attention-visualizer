@@ -25,6 +25,10 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
     // use callback, avoid creating a new function on each render
     // on the parameter, onDatasetAdded is an optional parameter, the default value is an empty function
     // sentence is the user's input sentence
+
+    //todo: 1. we should 1. Create a fill-mask pipeline with BERT
+    //todo: 2. Get user input sentence (which is that sentence)
+    //todo: 3. Replace the chosen word with [MASK]
     (sentence: string, onDatasetAdded: () => void = () => {}) => {
       setIsProcessing(true); // set the isProcessing state to true
 
