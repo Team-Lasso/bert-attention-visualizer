@@ -1,32 +1,42 @@
 import { useCallback, useEffect } from "react";
-import { SampleData, WordAttentionData } from "../types";
+import { SampleData } from "../types";
 import { useModelSelection } from "./useModelSelection";
 import { useDatasetManager } from "./useDatasetManager";
 import { useTokenInteraction } from "./useTokenInteraction";
 import { useVisualizationControls } from "./useVisualizationControls";
+import { tokenizeText } from "../services/modelService";
 
 /**
- * main hook, integrate other small hooks
- * provide complete attention visualization functionality
+ * Main hook that integrates other hooks to provide complete attention visualization functionality
  */
 const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
-  // load the dataset manager hook
+  // Load the dataset manager hook
   const datasetManager = useDatasetManager(initialDatasets);
-  const { currentData, hasUserInput } = datasetManager; //this contains the currentData and hasUserInput
+  const { currentData, hasUserInput, currentModelId, setCurrentModelId } = datasetManager;
 
-  // load the model selection hook
+  // Load the model selection hook
   const modelSelection = useModelSelection();
+  
+  // When model changes, update the current model ID in the dataset manager
+  useEffect(() => {
+    setCurrentModelId(modelSelection.selectedModelId);
+  }, [modelSelection.selectedModelId, setCurrentModelId]);
 
-  // load the token interaction hook
+  // Load the token interaction hook
   const tokenInteraction = useTokenInteraction(currentData);
+  
+  // When model changes, update the token interaction hook's model ID
+  useEffect(() => {
+    tokenInteraction.setCurrentModelId(modelSelection.selectedModelId);
+  }, [modelSelection.selectedModelId, tokenInteraction.setCurrentModelId]);
 
-  // load the visualization control hook
+  // Load the visualization control hook
   const visualizationControls = useVisualizationControls(currentData);
 
-  // handle the reset operation after the model is loaded
+  // Handle the reset operation after the model is loaded
   const handleLoadModel = useCallback(() => {
     modelSelection.handleLoadModel(() => {
-      // reset the token interaction and visualization control state
+      // Reset the token interaction and visualization control state
       tokenInteraction.resetTokenInteractions();
       visualizationControls.resetViewState();
     });
@@ -36,38 +46,43 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
     visualizationControls.resetViewState,
   ]);
 
-  // handle the sentence submission
-  // in the previous analysis, we know that handleSentenceSubmit is used to handle the user's input sentence
-  // the onDatasetAdded is an optional parameter, the default value is an empty function
-  // we here pass tokenInteraction.resetTokenInteractions to onDatasetAdded
-  // so, when the user inputs a sentence, tokenInteraction.resetTokenInteractions will be called
-  // then, tokenInteraction.resetTokenInteractions will reset the token interaction state
-
+  // Handle the sentence submission - now passes modelId
   const handleSentenceSubmit = useCallback(
     (sentence: string) => {
-      datasetManager.handleSentenceSubmit(sentence, () => {
-        // reset the token related state
-        tokenInteraction.resetTokenInteractions(); 
-      });
+      if (!sentence.trim()) return;
+      
+      // Use the currently selected model for processing
+      datasetManager.handleSentenceSubmit(
+        sentence, 
+        () => tokenInteraction.resetTokenInteractions(),
+        modelSelection.selectedModelId
+      );
     },
     [
       datasetManager.handleSentenceSubmit,
       tokenInteraction.resetTokenInteractions,
+      modelSelection.selectedModelId
     ]
   );
+  
+  // Handle the mask word operation - now passes modelId
+  const handleMaskWord = useCallback(
+    (tokenIndex: number) => {
+      tokenInteraction.handleMaskWord(tokenIndex, modelSelection.selectedModelId);
+    },
+    [tokenInteraction.handleMaskWord, modelSelection.selectedModelId]
+  );
 
-  // calculate the attention data of the selected token
-  const wordAttentionData: WordAttentionData =
-    visualizationControls.getWordAttentionData(
-      tokenInteraction.selectedTokenIndex
-    );
+  // Calculate the attention data of the selected token
+  const wordAttentionData = visualizationControls.getWordAttentionData(
+    tokenInteraction.selectedTokenIndex
+  );
 
-  // generate the tokens array for visualization
-  const tokensWithIndex =
-    currentData?.tokens.map((token, index) => ({
-      ...token,
-      index,
-    })) || [];
+  // Generate the tokens array for visualization
+  const tokensWithIndex = currentData?.tokens.map((token, index) => ({
+    ...token,
+    index,
+  })) || [];
 
   return {
     // dataset manager
@@ -78,6 +93,9 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
 
     // token interaction
     ...tokenInteraction,
+    
+    // Override the handle mask word with our version that includes model ID
+    handleMaskWord,
 
     // visualization control
     ...visualizationControls,

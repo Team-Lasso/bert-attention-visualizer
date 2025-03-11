@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { AttentionData, WordPrediction } from "../types";
+import { getMaskedPredictions } from "../services/modelService";
 
 /**
  * token interaction hook
@@ -7,49 +8,71 @@ import { AttentionData, WordPrediction } from "../types";
  */
 export const useTokenInteraction = (currentData: AttentionData) => {
   // states
-  const [selectedTokenIndex, setSelectedTokenIndex] = useState<number | null>(
-    null
-  );
+  const [selectedTokenIndex, setSelectedTokenIndex] = useState<number | null>(null);
   const [maskedTokenIndex, setMaskedTokenIndex] = useState<number | null>(null);
-  const [selectedPrediction, setSelectedPrediction] = useState<string | null>(
-    null
-  );
+  const [selectedPrediction, setSelectedPrediction] = useState<string | null>(null);
+  const [predictionResults, setPredictionResults] = useState<WordPrediction[] | null>(null);
+  const [isLoadingPredictions, setIsLoadingPredictions] = useState(false);
+  const [currentModelId, setCurrentModelId] = useState<string>("bert-base-uncased");
 
   // reset all states
   const resetTokenInteractions = useCallback(() => {
-    setSelectedTokenIndex(null); // set selectedTokenIndex to null
-    setMaskedTokenIndex(null); // set maskedTokenIndex to null
-    setSelectedPrediction(null); // set selectedPrediction to null
+    setSelectedTokenIndex(null);
+    setMaskedTokenIndex(null);
+    setSelectedPrediction(null);
+    setPredictionResults(null);
   }, []);
 
   // handle word masking
   const handleMaskWord = useCallback(
-    // the user will pass a tokenIndex, which represents the index of the token to be masked
-    (tokenIndex: number) => {
-      // not allowed to mask special tokens
+    async (tokenIndex: number, modelId: string = "bert-base-uncased") => {
+      // Not allowed to mask special tokens
       if (
-        currentData?.tokens[tokenIndex]?.text === "[CLS]" ||
-        currentData?.tokens[tokenIndex]?.text === "[SEP]"
+        !currentData?.tokens ||
+        currentData.tokens[tokenIndex]?.text === "[CLS]" ||
+        currentData.tokens[tokenIndex]?.text === "[SEP]"
       ) {
         return;
       }
 
-      // toggle the masked state
-      //这个prevIndex是maskedTokenIndex的值，在第一次调用时，prevIndex为null
-      //但是我们会不停的更新prevIndex的值
-      //如果prevIndex的值和tokenIndex的值相等，则将maskedTokenIndex设置为null 这表示用户没有选择任何token
-      //如果prevIndex的值和tokenIndex的值不相等，则将maskedTokenIndex设置为tokenIndex 这表示用户选择了这个token
-      setMaskedTokenIndex((prevIndex) =>
-        prevIndex === tokenIndex ? null : tokenIndex
-      );
+      // Toggle the masked state
+      if (maskedTokenIndex === tokenIndex) {
+        // Unmasking
+        setMaskedTokenIndex(null);
+        setPredictionResults(null);
+        setSelectedPrediction(null);
+        return;
+      }
 
-      // reset the prediction selection
-      //清空是为了避免用户选择了一个token，但是之前的prediction还在
+      // Set masking
+      setMaskedTokenIndex(tokenIndex);
       setSelectedPrediction(null);
+      setCurrentModelId(modelId);
+
+      // Get original sentence text from tokens (excluding special tokens)
+      const sentenceTokens = currentData.tokens
+        .filter(token => token.text !== "[CLS]" && token.text !== "[SEP]" && token.text !== "[PAD]")
+        .map(token => token.text);
       
-      //todo:这里我们需要调用fill-mask和prediction之类的。
+      // Create sentence text
+      const text = sentenceTokens.join(' ');
+
+      // Calculate the mask index (accounting for special tokens filtering)
+      const maskedTokenPosition = tokenIndex;
+      
+      // Get predictions from API
+      setIsLoadingPredictions(true);
+      try {
+        const predictions = await getMaskedPredictions(text, maskedTokenPosition, modelId);
+        setPredictionResults(predictions);
+      } catch (error) {
+        console.error("Error getting predictions:", error);
+        setPredictionResults([]);
+      } finally {
+        setIsLoadingPredictions(false);
+      }
     },
-    [currentData?.tokens]
+    [currentData?.tokens, maskedTokenIndex]
   );
 
   // handle word prediction selection
@@ -69,20 +92,9 @@ export const useTokenInteraction = (currentData: AttentionData) => {
     window.addEventListener("token-selection-change", handleTokenSelection);
 
     return () => {
-      window.removeEventListener(
-        "token-selection-change",
-        handleTokenSelection
-      );
+      window.removeEventListener("token-selection-change", handleTokenSelection);
     };
   }, []);
-
-  // get the prediction results based on the masked token
-  const maskPredictions: WordPrediction[] | null =
-    maskedTokenIndex !== null && currentData?.maskPredictions
-      ? currentData.maskPredictions.find(
-          (mp) => mp.tokenIndex === maskedTokenIndex
-        )?.predictions || null
-      : null;
 
   // get the text of the selected token
   const selectedTokenText =
@@ -95,13 +107,16 @@ export const useTokenInteraction = (currentData: AttentionData) => {
     selectedTokenIndex,
     maskedTokenIndex,
     selectedPrediction,
-    maskPredictions,
+    maskPredictions: predictionResults,
     selectedTokenText,
+    isLoadingPredictions,
+    currentModelId,
 
     // operation functions
     setSelectedTokenIndex,
     handleMaskWord,
     handleSelectPrediction,
     resetTokenInteractions,
+    setCurrentModelId,
   };
 };

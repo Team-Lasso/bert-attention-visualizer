@@ -1,6 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { pretrainedModels } from "../data/pretrainedModels";
 import { ModelConfig } from "../types";
+import { fetchAvailableModels } from "../services/modelService";
 
 /**
  * model selection and loading hook
@@ -8,16 +9,36 @@ import { ModelConfig } from "../types";
  */
 export const useModelSelection = () => {
   // states
-  const [selectedModelId, setSelectedModelId] =
-    useState<string>("bert-base-uncased");
+  const [selectedModelId, setSelectedModelId] = useState<string>("bert-base-uncased");
   const [isModelLoading, setIsModelLoading] = useState(false);
   const [showModelSelector, setShowModelSelector] = useState(false);
+  const [availableModels, setAvailableModels] = useState<ModelConfig[]>(pretrainedModels);
+
+  // Load available models from API on component mount
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const models = await fetchAvailableModels();
+        if (models && models.length > 0) {
+          setAvailableModels(models);
+        }
+      } catch (error) {
+        console.error("Error fetching models:", error);
+        // Fallback to default models
+        setAvailableModels(pretrainedModels.filter(model => 
+          ['bert-base-uncased', 'roberta-base'].includes(model.id)
+        ));
+      }
+    };
+
+    loadModels();
+  }, []);
 
   // get the current model information
   const currentModel =
-    pretrainedModels.find(
+    availableModels.find(
       (model: ModelConfig) => model.id === selectedModelId
-    ) || pretrainedModels[0];
+    ) || availableModels[0];
 
   // model selection processing
   const handleModelSelect = useCallback((modelId: string) => {
@@ -28,14 +49,14 @@ export const useModelSelection = () => {
   const handleLoadModel = useCallback((onModelLoaded: () => void) => {
     setIsModelLoading(true);
 
-    // simulate the loading delay (in the actual project, this will have the real model loading logic) //todo: split the sentence into token features
+    // Simulate brief loading time (this would be real loading in production)
     setTimeout(() => {
       setIsModelLoading(false);
       setShowModelSelector(false);
 
       // call the callback function after the model is loaded
       onModelLoaded();
-    }, 1500);
+    }, 500);
   }, []);
 
   // toggle the model selector display state
@@ -49,6 +70,7 @@ export const useModelSelection = () => {
     isModelLoading,
     showModelSelector,
     currentModel,
+    availableModels,
 
     // operation functions
     handleModelSelect,
