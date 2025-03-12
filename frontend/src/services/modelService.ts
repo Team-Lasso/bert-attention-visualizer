@@ -92,11 +92,34 @@ export const getMaskedPredictions = async (
   topK: number = 10
 ): Promise<WordPrediction[]> => {
   try {
+    // For BERT specifically, identify the word being masked to help backend
+    const isBert = modelName.includes('bert') && !modelName.includes('roberta');
+    const isRoberta = modelName.includes('roberta');
+    
+    // Get the word at the mask index, cleaning it of any punctuation
+    const words = text.split(' ');
+    const wordAtIndex = words[maskIndex] || '';
+    // Clean the word from any punctuation
+    const cleanWord = wordAtIndex.replace(/^[^\w]+|[^\w]+$/g, '');
+    console.log(`Word to mask: "${cleanWord}" from "${wordAtIndex}" at index ${maskIndex}`);
+    
+    // For RoBERTa, create an explicit masked text to avoid masking issues
+    let explicitMaskedText = '';
+    if (isRoberta) {
+      const wordsWithMask = [...words];
+      wordsWithMask[maskIndex] = '<mask>';
+      explicitMaskedText = wordsWithMask.join(' ');
+      console.log(`RoBERTa explicit masked text: "${explicitMaskedText}"`);
+    }
+    
     // Let the backend handle punctuation properly
     const response = await fetch(`${API_URL}/predict_masked`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // Add extra headers to help backend with masking
+        ...(isBert && { 'X-Token-To-Mask': cleanWord }),
+        ...(isRoberta && { 'X-Explicit-Masked-Text': explicitMaskedText })
       },
       body: JSON.stringify({
         text,
@@ -123,13 +146,12 @@ export const getMaskedPredictions = async (
 
 /**
  * Get attention data for a sentence using the specified model
- * If the backend doesn't support the /attention endpoint, falls back to sample data
+ * Now requires a working backend connection - no fallback to sample data
  */
 export const getAttentionData = async (text: string, modelName: string): Promise<AttentionData> => {
   try {
-    console.log(`Attempting to fetch attention data for: "${text}" with model: ${modelName}`);
+    console.log(`Fetching attention data for: "${text}" with model: ${modelName}`);
     
-    // Now try the actual request
     const response = await fetch(`${API_URL}/attention`, {
       method: 'POST',
       headers: {
@@ -141,32 +163,28 @@ export const getAttentionData = async (text: string, modelName: string): Promise
       }),
     });
 
-    // If we get a 404, the endpoint doesn't exist yet
+    // If we get a 404, the endpoint doesn't exist
     if (response.status === 404) {
-      console.warn('Attention endpoint not found on backend (404), using fallback data');
-      return fallbackToSampleAttentionData(text);
+      throw new Error('Attention endpoint not found. Please make sure the backend server is running and supports the /attention endpoint.');
     }
 
     if (!response.ok) {
-      console.error(`Failed to get attention data: ${response.status} ${response.statusText}`);
-      return fallbackToSampleAttentionData(text);
+      throw new Error(`Failed to get attention data: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    console.log('Successfully received attention data from backend', data);
+    console.log('Successfully received attention data from backend');
     
     // Validate the data structure
     if (!data.attention_data) {
-      console.error('Response is missing attention_data field', data);
-      return fallbackToSampleAttentionData(text);
+      throw new Error('Backend response is missing attention_data field');
     }
     
     const attentionData = data.attention_data;
     
     // Verify that the data has the expected structure
     if (!Array.isArray(attentionData.tokens) || !Array.isArray(attentionData.layers)) {
-      console.error('Invalid attention data structure', attentionData);
-      return fallbackToSampleAttentionData(text);
+      throw new Error('Invalid attention data structure received from backend');
     }
     
     // Log some statistics about the data
@@ -180,66 +198,15 @@ export const getAttentionData = async (text: string, modelName: string): Promise
       }
     }
     
+    // Add mask predictions placeholder as they're not directly included in backend response
+    // This will allow compatibility with the rest of the application that expects maskPredictions
+    if (!attentionData.maskPredictions) {
+      attentionData.maskPredictions = [];
+    }
+    
     return attentionData;
   } catch (error) {
     console.error('Error getting attention data:', error);
-    console.warn('Falling back to sample attention data');
-    return fallbackToSampleAttentionData(text);
+    throw error; // Re-throw the error instead of falling back to sample data
   }
-};
-
-/**
- * Fallback function to generate sample attention data if the backend API is not available
- */
-const fallbackToSampleAttentionData = (text: string): AttentionData => {
-  // Split sentence into tokens and add BERT special tokens
-  const rawTokens = text.split(/\s+/);
-  
-  // Create tokens array with [CLS] at the beginning and [SEP] at the end
-  const tokenTexts = ["[CLS]", ...rawTokens, "[SEP]"];
-  const tokens: Token[] = tokenTexts.map((text, index) => ({ text, index }));
-  
-  // Generate sample attention matrices for each layer and head
-  const layers = Array.from({ length: 12 }, (_, layerIndex) => {
-    const heads = Array.from({ length: 12 }, (_, headIndex) => {
-      // Create a sample attention matrix for this head
-      const attention = Array.from({ length: tokens.length }, () => 
-        Array.from({ length: tokens.length }, () => Math.random())
-      );
-      
-      // For BERT-like attention patterns:
-      // - [CLS] token often attends to all tokens
-      // - Tokens often attend to themselves
-      // - Special emphasis on [CLS] and [SEP]
-      for (let i = 0; i < tokens.length; i++) {
-        // Boost self-attention
-        attention[i][i] *= 2;
-        
-        // [CLS] token (index 0) attends to all tokens somewhat evenly
-        if (i === 0) {
-          for (let j = 0; j < tokens.length; j++) {
-            attention[i][j] *= 1.5;
-          }
-        }
-        
-        // All tokens pay some attention to [CLS] and [SEP]
-        attention[i][0] *= 1.5; // Attention to [CLS]
-        attention[i][tokens.length - 1] *= 1.5; // Attention to [SEP]
-      }
-      
-      // Normalize each row to sum to 1
-      attention.forEach(row => {
-        const sum = row.reduce((a, b) => a + b, 0);
-        for (let i = 0; i < row.length; i++) {
-          row[i] = row[i] / sum;
-        }
-      });
-      
-      return { headIndex, attention };
-    });
-    
-    return { layerIndex, heads };
-  });
-  
-  return { tokens, layers };
 };

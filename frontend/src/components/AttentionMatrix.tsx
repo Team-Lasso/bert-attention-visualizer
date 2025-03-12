@@ -59,7 +59,11 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
     tokens.forEach((sourceToken, i) => {
       tokens.forEach((targetToken, j) => {
         // Calculate percentage for display
-        const percentage = (head.attention[i][j] * 100).toFixed(1);
+        const attentionValue = head.attention[i][j];
+        // Format with appropriate precision: 0 decimals for values ≥ 1%, 1 decimal for smaller values
+        const percentage = attentionValue >= 0.01
+          ? Math.round(attentionValue * 100) + '%'  // 1% or above: no decimal
+          : (attentionValue * 100).toFixed(1) + '%'; // Below 1%: 1 decimal place
 
         // Determine if cell should be highlighted based on selection
         const isHighlighted =
@@ -103,25 +107,37 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
 
         // Add tooltip
         cell.append("title")
-          .text(`${sourceToken.text} → ${targetToken.text}: ${percentage}%`);
+          .text(`${sourceToken.text} → ${targetToken.text}: ${percentage}`);
 
-        // Add percentage text for cells that have significant attention (> 10%)
-        // or for cells associated with the selected token
-        if ((head.attention[i][j] > 0.1 || isHighlighted) && cellSize > 25) {
-          g.append("text")
+        // Add percentage text for all cells where there's enough space
+        if (cellSize > 20) {
+          // Determine font size based on cell size
+          const fontSize = Math.min(10, cellSize / 3);
+
+          // Determine opacity based on value to slightly fade very low values
+          // but still keep them visible (minimum 0.7 opacity)
+          const textOpacity = Math.max(0.7, head.attention[i][j] * 2);
+
+          // Create percentage text with improved readability
+          const textElement = g.append("text")
             .attr("x", j * cellSize + cellSize / 2)
             .attr("y", i * cellSize + cellSize / 2)
             .attr("text-anchor", "middle")
             .attr("dominant-baseline", "middle")
-            .attr("font-size", "10px")
+            .attr("font-size", `${fontSize}px`)
             .attr("font-weight", "bold")
             .attr("fill", head.attention[i][j] > 0.5 ? "white" : "black")
+            .attr("stroke", head.attention[i][j] > 0.5 ? "none" : "white") // Add stroke for better contrast
+            .attr("stroke-width", "0.5px")
+            .attr("paint-order", "stroke") // Make the stroke appear behind the text
             .attr("opacity", 0) // Start invisible
-            .text(`${percentage}%`)
-            .transition()
+            .text(percentage);
+
+          // Animate appearance
+          textElement.transition()
             .duration(500)
             .delay(i * 20 + j * 20 + 300) // Appear after cell coloring
-            .attr("opacity", 1);
+            .attr("opacity", textOpacity);
         }
 
         // Add click event to cells

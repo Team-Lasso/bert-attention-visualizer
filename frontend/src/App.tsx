@@ -1,10 +1,12 @@
 import AttentionVisualizerPage from "./components/AttentionVisualizerPage";
-import { sampleDatasets } from "./data/sampleData";
+// Remove the import for sample datasets
+// import { sampleDatasets } from "./data/sampleData";
 
 function App() {
   return (
     <div className="min-h-screen bg-gray-100">
-      <AttentionVisualizerPage datasets={sampleDatasets} />
+      {/* Start with an empty array instead of sample datasets */}
+      <AttentionVisualizerPage datasets={[]} />
     </div>
   );
 }

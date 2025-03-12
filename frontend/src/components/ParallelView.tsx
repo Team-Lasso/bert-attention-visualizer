@@ -50,16 +50,24 @@ const ParallelView: React.FC<ParallelViewProps> = ({
     const containerWidth = width;
     const containerHeight = height - 50; // Space for bottom text
 
-    // Token dimensions
-    const tokenWidth = 180;
-    const tokenHeight = 40;
-    const tokenGap = 8;
+    // Token and column dimensions - adjusted for better spacing
+    const tokenWidth = 160; // Slightly narrower tokens for better spacing
+    const percentageColumnWidth = 70; // Wider percentage column for better readability
+    const tokenHeight = 36; // Slightly smaller height for better vertical spacing
+    const tokenGap = 12; // Increased gap between tokens vertically
     const totalTokenHeight = tokenHeight + tokenGap;
+    const betweenColumnGap = 60; // Increased gap between columns for less cramping
 
-    // Calculate layout
-    const middleGap = containerWidth - (tokenWidth * 2);
-    const leftColX = 0;
-    const rightColX = leftColX + tokenWidth + middleGap;
+    // Total content width
+    const totalContentWidth = tokenWidth * 2 + percentageColumnWidth + betweenColumnGap * 2;
+
+    // Calculate left offset to center the entire layout
+    const leftOffset = Math.max(0, (containerWidth - totalContentWidth) / 2);
+
+    // Calculate column positions with proper centering
+    const sourceColX = leftOffset;
+    const targetColX = sourceColX + tokenWidth + betweenColumnGap;
+    const percentageColX = targetColX + tokenWidth + betweenColumnGap / 2;
 
     // Create main layout
     const mainLayout = document.createElement('div');
@@ -68,7 +76,8 @@ const ParallelView: React.FC<ParallelViewProps> = ({
 
     // Create header
     const header = document.createElement('div');
-    header.className = 'flex justify-between w-full mb-4';
+    header.className = 'flex w-full mb-6 px-2'; // Increased bottom margin
+    header.style.paddingLeft = `${leftOffset}px`; // Align headers with columns
 
     const sourceHeader = document.createElement('div');
     sourceHeader.className = 'font-bold text-slate-700 text-lg';
@@ -80,10 +89,19 @@ const ParallelView: React.FC<ParallelViewProps> = ({
     targetHeader.className = 'font-bold text-slate-700 text-lg';
     targetHeader.style.width = `${tokenWidth}px`;
     targetHeader.style.textAlign = 'center';
+    targetHeader.style.marginLeft = `${betweenColumnGap}px`;
     targetHeader.textContent = 'Target Tokens';
+
+    const percentageHeader = document.createElement('div');
+    percentageHeader.className = 'font-bold text-slate-700 text-lg';
+    percentageHeader.style.width = `${percentageColumnWidth}px`;
+    percentageHeader.style.textAlign = 'center';
+    percentageHeader.style.marginLeft = `${betweenColumnGap / 2}px`;
+    percentageHeader.textContent = 'Attention';
 
     header.appendChild(sourceHeader);
     header.appendChild(targetHeader);
+    header.appendChild(percentageHeader);
     mainLayout.appendChild(header);
 
     // Create content area with tokens
@@ -106,33 +124,27 @@ const ParallelView: React.FC<ParallelViewProps> = ({
 
     // Create token columns
     const sourceColumn = document.createElement('div');
-    sourceColumn.className = 'absolute top-0 left-0';
+    sourceColumn.className = 'absolute top-0';
     sourceColumn.style.width = `${tokenWidth}px`;
+    sourceColumn.style.left = `${sourceColX}px`;
 
     const targetColumn = document.createElement('div');
     targetColumn.className = 'absolute top-0';
     targetColumn.style.width = `${tokenWidth}px`;
-    targetColumn.style.left = `${rightColX}px`;
+    targetColumn.style.left = `${targetColX}px`;
+
+    const percentageColumn = document.createElement('div');
+    percentageColumn.className = 'absolute top-0';
+    percentageColumn.style.width = `${percentageColumnWidth}px`;
+    percentageColumn.style.left = `${percentageColX}px`;
 
     contentArea.appendChild(sourceColumn);
     contentArea.appendChild(targetColumn);
+    contentArea.appendChild(percentageColumn);
 
     // Style for improved appearance
     header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
     header.style.width = '100%';
-    targetHeader.style.marginLeft = 'auto';
-
-    // Custom positioning to ensure proper alignment
-    const columnSpacing = containerWidth - tokenWidth * 2;
-    if (columnSpacing > 0) {
-      sourceHeader.style.marginRight = '0';
-      targetHeader.style.marginLeft = '0';
-
-      // Position columns exactly
-      sourceColumn.style.left = '0';
-      targetColumn.style.left = `${tokenWidth + columnSpacing}px`;
-    }
 
     // Create colors
     const colors = [
@@ -144,6 +156,7 @@ const ParallelView: React.FC<ParallelViewProps> = ({
     // Store token elements for precise positioning
     const sourceTokenElements: HTMLElement[] = [];
     const targetTokenElements: HTMLElement[] = [];
+    const percentageElements: Map<string, HTMLElement> = new Map(); // Store percentage elements for each connection
 
     // Create tokens with exact positioning
     tokens.forEach((token, i) => {
@@ -210,6 +223,21 @@ const ParallelView: React.FC<ParallelViewProps> = ({
       targetTokenWrap.appendChild(targetToken);
       targetTokenElements.push(targetToken);
 
+      // Percentage placeholder for each target token row
+      const percentageWrap = document.createElement('div');
+      percentageWrap.className = 'absolute w-full';
+      percentageWrap.style.top = `${topPosition}px`;
+      percentageColumn.appendChild(percentageWrap);
+
+      // Create a div to hold percentage values
+      const percentageDiv = document.createElement('div');
+      percentageDiv.className = 'flex items-center justify-start h-full';
+      percentageDiv.style.height = `${tokenHeight}px`;
+      percentageWrap.appendChild(percentageDiv);
+
+      // Store the reference to this div for later use
+      percentageElements.set(`target-${i}`, percentageDiv);
+
       // Click handler for source tokens
       sourceToken.addEventListener('click', () => {
         const tokenIndex = parseInt(sourceToken.dataset.index || '0');
@@ -240,34 +268,85 @@ const ParallelView: React.FC<ParallelViewProps> = ({
     // Draw attention connections with exact alignment
     if (tokens.length > 0) {
       setTimeout(() => {
+        // Clear any existing percentage values
+        percentageElements.forEach(element => {
+          element.innerHTML = '';
+        });
+
         if (selectedTokenIndex !== null) {
           // Selected token to all targets
           const sourceToken = sourceTokenElements[selectedTokenIndex];
           const sourcePos = getTokenPosition(sourceToken);
 
-          tokens.forEach((_, targetIdx) => {
-            const attentionValue = head.attention[selectedTokenIndex][targetIdx];
-            if (attentionValue > 0.01) {
-              const targetToken = targetTokenElements[targetIdx];
-              const targetPos = getTokenPosition(targetToken);
+          // Sort attention values to display in descending order
+          const attentionValues = tokens.map((_, targetIdx) => ({
+            targetIdx,
+            value: head.attention[selectedTokenIndex][targetIdx]
+          })).filter(item => item.value > 0.001);
 
-              drawConnection(
-                connectionsGroup,
-                sourcePos.right, // Start at right edge of source
-                sourcePos.centerY,
-                targetPos.left, // End at left edge of target
-                targetPos.centerY,
-                attentionValue,
-                colors[selectedTokenIndex % colors.length]
-              );
+          // Sort by value in descending order
+          attentionValues.sort((a, b) => b.value - a.value);
+
+          // Draw connections for sorted values
+          attentionValues.forEach(({ targetIdx, value }) => {
+            const targetToken = targetTokenElements[targetIdx];
+            const targetPos = getTokenPosition(targetToken);
+
+            // Draw connection line
+            drawConnection(
+              connectionsGroup,
+              sourcePos.right, // Start at right edge of source
+              sourcePos.centerY,
+              targetPos.left, // End at left edge of target
+              targetPos.centerY,
+              value,
+              colors[selectedTokenIndex % colors.length],
+              0.8
+            );
+
+            // Add percentage to the percentage column
+            const percentageElement = percentageElements.get(`target-${targetIdx}`);
+            if (percentageElement) {
+              // Format percentage based on value
+              const percentageText = value >= 0.01
+                ? Math.round(value * 100) + '%'  // ≥ 1%: no decimal
+                : value >= 0.001
+                  ? (value * 100).toFixed(1) + '%' // 0.1% to 0.9%: 1 decimal
+                  : (value * 100).toFixed(2) + '%'; // < 0.1%: 2 decimals
+
+              // Create percentage badge with improved styling
+              const badge = document.createElement('div');
+              badge.className = 'font-medium text-center transition-all px-2';
+              badge.style.width = '100%';
+              badge.style.color = colors[selectedTokenIndex % colors.length];
+              badge.style.opacity = Math.min(1, Math.max(0.75, value * 2)).toString(); // Slightly increased minimum opacity
+              badge.style.fontWeight = 'bold';
+              badge.style.fontSize = '14px'; // Consistent font size
+              badge.textContent = percentageText;
+
+              // Animate appearance
+              badge.style.opacity = '0';
+              badge.style.transform = 'translateX(-10px)';
+              badge.style.transition = 'all 0.4s ease';
+
+              percentageElement.innerHTML = '';
+              percentageElement.appendChild(badge);
+
+              // Trigger animation
+              setTimeout(() => {
+                badge.style.opacity = Math.min(1, Math.max(0.75, value * 2)).toString();
+                badge.style.transform = 'translateX(0)';
+              }, 50);
             }
           });
         } else {
-          // Show all significant connections
+          // Show all significant connections with wider spacing
+          // For the no-selection state, limit connections to reduce clutter
           tokens.forEach((_, sourceIdx) => {
             tokens.forEach((_, targetIdx) => {
               const attentionValue = head.attention[sourceIdx][targetIdx];
-              if (attentionValue > 0.1) {
+              // Higher threshold when no token is selected to reduce visual clutter
+              if (attentionValue > 0.05) {
                 const sourceToken = sourceTokenElements[sourceIdx];
                 const targetToken = targetTokenElements[targetIdx];
                 const sourcePos = getTokenPosition(sourceToken);
@@ -275,13 +354,13 @@ const ParallelView: React.FC<ParallelViewProps> = ({
 
                 drawConnection(
                   connectionsGroup,
-                  sourcePos.right, // Start at right edge of source
+                  sourcePos.right,
                   sourcePos.centerY,
-                  targetPos.left, // End at left edge of target
+                  targetPos.left,
                   targetPos.centerY,
                   attentionValue,
                   colors[sourceIdx % colors.length],
-                  0.6
+                  0.5 // Lower opacity for no-selection state
                 );
               }
             });
@@ -290,14 +369,14 @@ const ParallelView: React.FC<ParallelViewProps> = ({
       }, 50); // Small delay to ensure DOM rendering is complete
     }
 
-    // Add instructions in the content area
+    // Add instructions in the content area with improved styling
     if (tokens.length > 0 && selectedTokenIndex === null) {
       const instructionOverlay = document.createElement('div');
       instructionOverlay.className = 'absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none';
       instructionOverlay.innerHTML = `
-        <div class="bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-lg text-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2 text-indigo-600"><path d="M12 22v-5"></path><path d="M9 8V2"></path><path d="M15 8V2"></path><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path></svg>
-          <div class="text-md font-medium text-gray-800">Click any source token</div>
+        <div class="bg-white/90 backdrop-blur-sm p-5 rounded-lg shadow-lg text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-3 text-indigo-600"><path d="M12 22v-5"></path><path d="M9 8V2"></path><path d="M15 8V2"></path><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path></svg>
+          <div class="text-lg font-medium text-gray-800 mb-1">Click any source token</div>
           <div class="text-sm text-gray-600">to see its attention connections</div>
         </div>
       `;
@@ -340,16 +419,9 @@ const ParallelView: React.FC<ParallelViewProps> = ({
     color: string,
     opacity: number = 0.8
   ) {
-    // Calculate the midpoint and offsets
-    const midX = (x1 + x2) / 2;
-    const dx = x2 - x1;
-
-    // Use a consistent relative curve
-    const curveOffset = Math.min(dx * 0.3, 80);
-
-    // Use a consistent connection path
+    // Create a straight line path
     const path = layer.append('path')
-      .attr('d', `M${x1},${y1} C${x1 + curveOffset},${y1} ${x2 - curveOffset},${y2} ${x2},${y2}`)
+      .attr('d', `M${x1},${y1} L${x2},${y2}`) // Straight line
       .attr('fill', 'none')
       .attr('stroke', color)
       .attr('stroke-width', 0)
@@ -371,55 +443,12 @@ const ParallelView: React.FC<ParallelViewProps> = ({
         .attr('fill', '#64748b');
     }
 
-    // Animate path
+    // Animate path with more conservative line width
     path.transition()
       .duration(600)
       .delay(400)
-      .attr('stroke-width', Math.max(1, strength * 10));
-
-    // Add percentage label
-    if (strength > 0.05) {
-      const percentage = (strength * 100).toFixed(1);
-
-      // Calculate vertical offset based on distance
-      const yDiff = Math.abs(y2 - y1);
-      const vertOffset = yDiff > 40 ? 16 : 12;
-
-      // Add background for label
-      const labelBg = layer.append('rect')
-        .attr('x', midX - 20)
-        .attr('y', (y1 + y2) / 2 - vertOffset - 8)
-        .attr('width', 40)
-        .attr('height', 16)
-        .attr('rx', 8)
-        .attr('ry', 8)
-        .attr('fill', 'white')
-        .attr('opacity', 0)
-        .attr('stroke', 'none');
-
-      // Add percentage text
-      const label = layer.append('text')
-        .attr('x', midX)
-        .attr('y', (y1 + y2) / 2 - vertOffset + 4)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', '11px')
-        .attr('font-weight', 'bold')
-        .attr('fill', color)
-        .attr('opacity', 0)
-        .text(`${percentage}%`);
-
-      // Animate label
-      label.transition()
-        .duration(300)
-        .delay(800)
-        .attr('opacity', 1);
-
-      // Animate background
-      labelBg.transition()
-        .duration(300)
-        .delay(800)
-        .attr('opacity', 0.7);
-    }
+      // Use a more moderate line width for less visual crowding
+      .attr('stroke-width', Math.max(1.2, Math.min(5, strength * 8)));
   }
 
   return (

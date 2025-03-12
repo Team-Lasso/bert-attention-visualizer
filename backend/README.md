@@ -1,9 +1,5 @@
 # todo:
- 1. UI need to change: placeholder on start up for attention flow
- 2. word replacement  UI & it's back end
- 3. Header and Layer backend integration
- 4. Hide CLS and SEP token during word masking but show in attention flow 
- 5. remove model not been connection to the backend. (now is only reberta and bert-base-uncase)
+ 1. word replacement  UI & it's back end
 
 
 # PyTorch Backend

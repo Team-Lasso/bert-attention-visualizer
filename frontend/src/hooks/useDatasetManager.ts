@@ -2,6 +2,13 @@ import { useState, useCallback } from "react";
 import { SampleData, AttentionData } from "../types";
 import { getAttentionData } from "../services/modelService";
 
+// Create empty attention data structure for initial state
+const emptyAttentionData: AttentionData = {
+  tokens: [],
+  layers: [],
+  maskPredictions: []
+};
+
 /**
  * dataset manager hook
  * responsible for managing the dataset, processing sentence input and updating related states
@@ -15,7 +22,8 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
   const [currentModelId, setCurrentModelId] = useState<string>("bert-base-uncased");
 
   // get the current data
-  const currentData: AttentionData = datasets[selectedDatasetIndex]?.data;
+  // Use empty attention data if there's no selected dataset
+  const currentData: AttentionData = datasets[selectedDatasetIndex]?.data || emptyAttentionData;
 
   // sentence submission processing
   const handleSentenceSubmit = useCallback(
@@ -68,7 +76,7 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
   );
 
   // check if there is a user input sentence (not the initial sample data)
-  const hasUserInput = selectedDatasetIndex >= initialDatasets.length;
+  const hasUserInput = datasets.length > 0 && selectedDatasetIndex >= initialDatasets.length;
 
   return {
     // states

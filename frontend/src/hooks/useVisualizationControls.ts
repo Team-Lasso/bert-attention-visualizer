@@ -9,17 +9,23 @@ export const useVisualizationControls = (currentData: AttentionData) => {
   // states
   const [selectedLayer, setSelectedLayer] = useState(0);
   const [selectedHead, setSelectedHead] = useState(0);
-  const [activeView, setActiveView] = useState<"matrix" | "parallel">(
-    "parallel"
-  );
+  const [activeView, setActiveView] = useState<"matrix" | "parallel">("parallel");
 
-  // get the current layer data
-  const currentLayerData = currentData?.layers[selectedLayer];
+  // Get the current layer data safely
+  const hasLayers = currentData?.layers && currentData.layers.length > 0;
+  
+  // get the current layer data - safely handle missing data
+  const currentLayerData = hasLayers 
+    ? currentData.layers[Math.min(selectedLayer, currentData.layers.length - 1)]
+    : undefined;
 
-  // get the current head data
-  const currentHeadData = currentLayerData?.heads[selectedHead];
+  // get the current head data - safely handle missing data
+  const hasHeads = currentLayerData?.heads && currentLayerData.heads.length > 0;
+  const currentHeadData = hasHeads 
+    ? currentLayerData.heads[Math.min(selectedHead, currentLayerData.heads.length - 1)]
+    : undefined;
 
-  // view switch
+  // view switch function - renamed to match its exported name
   const switchView = useCallback((view: "matrix" | "parallel") => {
     setActiveView(view);
   }, []);
@@ -27,7 +33,14 @@ export const useVisualizationControls = (currentData: AttentionData) => {
   // calculate the attention data of the selected token
   const getWordAttentionData = useCallback(
     (selectedTokenIndex: number | null): WordAttentionData => {
-      if (selectedTokenIndex === null || !currentData || !currentHeadData) {
+      // If any required data is missing, return empty data
+      if (
+        selectedTokenIndex === null || 
+        !currentData || 
+        !currentHeadData || 
+        !currentData.tokens || 
+        selectedTokenIndex >= currentData.tokens.length
+      ) {
         return {
           sourceWord: "",
           targetWords: [],
@@ -62,7 +75,7 @@ export const useVisualizationControls = (currentData: AttentionData) => {
     // operation functions
     setSelectedLayer,
     setSelectedHead,
-    switchView: setActiveView,
+    switchView,  // Use the renamed function directly
     getWordAttentionData,
     resetViewState,
   };

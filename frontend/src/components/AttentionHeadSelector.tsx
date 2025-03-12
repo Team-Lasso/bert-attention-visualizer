@@ -20,8 +20,41 @@ const AttentionHeadSelector: React.FC<AttentionHeadSelectorProps> = ({
   onLayerChange,
   onHeadChange,
 }) => {
-  const currentLayer = layers[selectedLayer];
-  
+  // Make sure layers array is valid and has at least one layer
+  if (!layers || layers.length === 0) {
+    return (
+      <div className="flex flex-col space-y-4 p-5 bg-white rounded-xl shadow-md border border-indigo-100">
+        <div className="text-center p-4">
+          <h3 className="text-lg font-medium text-gray-700 mb-2">No Layers Available</h3>
+          <p className="text-sm text-gray-600">
+            Please enter a sentence to visualize attention layers.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Safely get the current layer - ensure the selected layer index is valid
+  const safeSelectedLayer = Math.min(Math.max(0, selectedLayer), layers.length - 1);
+  const currentLayer = layers[safeSelectedLayer];
+
+  // If for some reason currentLayer is still undefined, provide a fallback
+  if (!currentLayer || !currentLayer.heads || currentLayer.heads.length === 0) {
+    return (
+      <div className="flex flex-col space-y-4 p-5 bg-white rounded-xl shadow-md border border-indigo-100">
+        <div className="text-center p-4">
+          <h3 className="text-lg font-medium text-gray-700 mb-2">Layer Data Unavailable</h3>
+          <p className="text-sm text-gray-600">
+            The selected layer has no attention head data.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Safely get the current head index
+  const safeSelectedHead = Math.min(Math.max(0, selectedHead), currentLayer.heads.length - 1);
+
   return (
     <div className="flex flex-col space-y-4 p-5 bg-white rounded-xl shadow-md border border-indigo-100">
       <div>
@@ -31,7 +64,7 @@ const AttentionHeadSelector: React.FC<AttentionHeadSelectorProps> = ({
         </label>
         <select
           id="layer-select"
-          value={selectedLayer}
+          value={safeSelectedLayer}
           onChange={(e) => onLayerChange(Number(e.target.value))}
           className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2 px-3 bg-white border transition-colors"
         >
@@ -42,7 +75,7 @@ const AttentionHeadSelector: React.FC<AttentionHeadSelectorProps> = ({
           ))}
         </select>
       </div>
-      
+
       <div>
         <label htmlFor="head-select" className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
           <Cpu size={16} className="mr-2 text-indigo-600" />
@@ -50,7 +83,7 @@ const AttentionHeadSelector: React.FC<AttentionHeadSelectorProps> = ({
         </label>
         <select
           id="head-select"
-          value={selectedHead}
+          value={safeSelectedHead}
           onChange={(e) => onHeadChange(Number(e.target.value))}
           className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2 px-3 bg-white border transition-colors"
         >
@@ -61,7 +94,7 @@ const AttentionHeadSelector: React.FC<AttentionHeadSelectorProps> = ({
           ))}
         </select>
       </div>
-      
+
       <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
         <h4 className="text-sm font-medium text-gray-700 mb-2">Attention Guide</h4>
         <div className="text-xs text-gray-600 space-y-1">
