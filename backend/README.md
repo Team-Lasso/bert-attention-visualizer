@@ -1,6 +1,7 @@
 # todo:
  1. word replacement  UI & it's back end
- 2. 
+ 2. extened the attetion page when it have more word.
+ 3. backend maybe not correct for attention heatmap and flow
 
 
 # PyTorch Backend
