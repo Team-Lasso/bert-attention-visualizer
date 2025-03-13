@@ -93,6 +93,8 @@ export const useTokenInteraction = (currentData: AttentionData) => {
       
       // Not allowed to mask special tokens
       const tokenText = currentData.tokens[tokenIndex].text;
+      console.log("tokenText", tokenText);
+      //!: this is not special token here any more, do we still need this?
       if (isSpecialToken(tokenText)) {
         console.log(`Cannot mask special token: ${tokenText}`);
         return;
