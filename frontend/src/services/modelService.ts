@@ -197,8 +197,8 @@ export const getMaskedPredictions = async (
       headers,
       body: JSON.stringify({
         text,
-        mask_index: maskIndex,
-        model_name: modelName,
+        mask_index: maskIndex+1, //!: Chen fix this, but it may not be the best way for off index question.
+        model_name: modelName, //! 
         top_k: topK,
       }),
     });
