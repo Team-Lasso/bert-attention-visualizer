@@ -140,31 +140,61 @@ export const getMaskedPredictions = async (
     const isBert = modelName.includes('bert') && !modelName.includes('roberta');
     const isRoberta = modelName.includes('roberta');
 
-    // Get the word at the mask index, cleaning it of any punctuation
+    // Get the word at the mask index
     const words = text.split(' ');
     const wordAtIndex = words[maskIndex] || '';
-    // Clean the word from any punctuation
-    const cleanWord = wordAtIndex.replace(/^[^\w]+|[^\w]+$/g, '');
-    console.log(`Word to mask: "${cleanWord}" from "${wordAtIndex}" at index ${maskIndex}`);
 
-    // For RoBERTa, create an explicit masked text to avoid masking issues
+    // More precise punctuation detection - check if the entire token is only punctuation
+    const isPunctuation = /^[.,;:!?'"()[\]{}]+$/.test(wordAtIndex.trim());
+    console.log(`Word to mask: "${wordAtIndex}" at index ${maskIndex}, isPunctuation: ${isPunctuation}`);
+
+    // Clean the word from any punctuation if it's not a pure punctuation token
+    const cleanWord = isPunctuation ? wordAtIndex : wordAtIndex.replace(/^[^\w]+|[^\w]+$/g, '');
+
+    // For RoBERTa or punctuation tokens, create an explicit masked text
     let explicitMaskedText = '';
-    if (isRoberta) {
+
+    // Only use explicit masking for RoBERTa or actual punctuation tokens
+    if ((isRoberta && wordAtIndex.trim() !== '') || isPunctuation) {
+      // Handle punctuation and RoBERTa specially with explicit masking
       const wordsWithMask = [...words];
-      wordsWithMask[maskIndex] = '<mask>';
+
+      // If masking punctuation at the end of a word, we need special handling
+      if (isPunctuation && maskIndex > 0 && words[maskIndex - 1] && words[maskIndex - 1].endsWith(wordAtIndex)) {
+        // The punctuation is part of
+        //  the previous word
+        const prevWord = words[maskIndex - 1];
+        wordsWithMask[maskIndex - 1] = prevWord.slice(0, -1) + '<mask>';
+        // Remove the separate punctuation token as we've merged it with the previous word
+        if (maskIndex < wordsWithMask.length) {
+          wordsWithMask.splice(maskIndex, 1);
+        }
+      } else {
+        wordsWithMask[maskIndex] = '<mask>';
+      }
+
       explicitMaskedText = wordsWithMask.join(' ');
-      console.log(`RoBERTa explicit masked text: "${explicitMaskedText}"`);
+      console.log(`Explicit masked text: "${explicitMaskedText}"`);
     }
 
-    // Let the backend handle punctuation properly
+    // Let the backend handle masking properly
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Only add token-to-mask header for BERT when dealing with regular words
+    if (isBert && !isPunctuation && cleanWord) {
+      headers['X-Token-To-Mask'] = cleanWord;
+    }
+
+    // Only add explicit masked text header when we have one
+    if (explicitMaskedText) {
+      headers['X-Explicit-Masked-Text'] = explicitMaskedText;
+    }
+
     const response = await fetch(`${API_URL}/predict_masked`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Add extra headers to help backend with masking
-        ...(isBert && { 'X-Token-To-Mask': cleanWord }),
-        ...(isRoberta && { 'X-Explicit-Masked-Text': explicitMaskedText })
-      },
+      headers,
       body: JSON.stringify({
         text,
         mask_index: maskIndex,
@@ -183,7 +213,13 @@ export const getMaskedPredictions = async (
     const data = await response.json();
     console.log("Raw predictions from backend:", data.predictions);
 
-    // Normalize the scores to ensure they're proper probabilities
+    // Skip normalization for RoBERTa as it's already normalized in the backend
+    if (isRoberta) {
+      console.log("Using RoBERTa model - skipping frontend normalization as backend already applies softmax");
+      return data.predictions;
+    }
+
+    // Normalize the scores to ensure they're proper probabilities for BERT
     return normalizePredictionScores(data.predictions);
   } catch (error) {
     console.error('Error getting masked predictions:', error);

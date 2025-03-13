@@ -135,23 +135,89 @@ const WordAttentionBarChart: React.FC<WordAttentionBarChartProps> = ({ data, wid
       .append("title")
       .text((d, i) => `${data.sourceWord} → ${sortedWords[i]}: ${(d * 100).toFixed(1)}%`);
 
-    // Add percentage labels on top of bars
+    // Add white background for small value labels to improve readability
+    // Create backgrounds first so they appear behind the text
+    g.selectAll(".bar-label-bg")
+      .data(sortedValues)
+      .enter()
+      .append("rect")
+      .attr("class", "bar-label-bg")
+      .attr("x", (d, i) => {
+        // Only create backgrounds for very small bars
+        const barHeight = innerHeight - y(d);
+        if (barHeight <= 20 && d > 0.0005) {
+          const labelWidth = d >= 0.01 ? 32 : (d >= 0.001 ? 38 : 44); // Estimate width based on decimal places
+          return (x(sortedWords[i]) || 0) + x.bandwidth() / 2 - labelWidth / 2;
+        }
+        return 0;
+      })
+      .attr("y", (d) => {
+        const barHeight = innerHeight - y(d);
+        if (barHeight <= 20 && d > 0.0005) {
+          return y(d) - 15;
+        }
+        return 0;
+      })
+      .attr("width", (d) => {
+        const barHeight = innerHeight - y(d);
+        if (barHeight <= 20 && d > 0.0005) {
+          return d >= 0.01 ? 32 : (d >= 0.001 ? 38 : 44); // Estimate width based on decimal places
+        }
+        return 0;
+      })
+      .attr("height", (d) => {
+        const barHeight = innerHeight - y(d);
+        return (barHeight <= 20 && d > 0.0005) ? 16 : 0;
+      })
+      .attr("fill", "#f8fafc") // Light blue-gray background (more visible than plain white)
+      .attr("opacity", 0.95)  // Higher opacity for better contrast
+      .attr("rx", 2)
+      .attr("stroke", "#cbd5e1") // Add a subtle border
+      .attr("stroke-width", 0.5);
+
+    // Add percentage labels on top of bars (after backgrounds)
     g.selectAll(".bar-label")
       .data(sortedValues)
       .enter()
       .append("text")
       .attr("class", "bar-label")
       .attr("x", (_, i) => (x(sortedWords[i]) || 0) + x.bandwidth() / 2)
-      .attr("y", d => y(d) - 5)
+      .attr("y", d => {
+        // Position labels either on top of the bar or inside it, depending on bar height
+        const barHeight = innerHeight - y(d);
+        const yPosition = barHeight > 20 ? y(d) + 15 : y(d) - 5; // Inside if tall enough, otherwise above
+        return yPosition;
+      })
       .attr("text-anchor", "middle")
       .attr("font-size", "10px")
-      .attr("fill", "black")
+      .attr("fill", d => {
+        // Use white text for tall bars, dark blue for small values (better contrast)
+        const barHeight = innerHeight - y(d);
+        return barHeight > 20 ? "white" : "#1e40af"; // Dark blue for small values
+      })
+      .attr("font-weight", d => {
+        // Make small value text bold for better visibility
+        const barHeight = innerHeight - y(d);
+        return barHeight <= 20 ? "bold" : "normal";
+      })
       .attr("opacity", 0)
-      .text(d => `${(d * 100).toFixed(1)}%`)
+      .text(d => {
+        // Format percentages: use appropriate precision based on value
+        if (d >= 0.01) {
+          return `${(d * 100).toFixed(1)}%`; // 1% or above: 1 decimal place
+        } else if (d >= 0.001) {
+          return `${(d * 100).toFixed(2)}%`; // 0.1% to 0.99%: 2 decimal places
+        } else if (d > 0) {
+          return `${(d * 100).toFixed(3)}%`; // Very small but non-zero: 3 decimal places
+        } else {
+          return "0%"; // Zero
+        }
+      })
       .transition()
       .delay(750)
       .duration(300)
-      .attr("opacity", d => d > 0.05 ? 1 : 0); // Only show labels for significant values
+      // Show all labels except those for extremely small values
+      .attr("opacity", d => d > 0.0005 ? 1 : 0);
 
     // Add title
     svg.append("text")
