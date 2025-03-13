@@ -41,11 +41,10 @@ const PredictionsSection: React.FC<PredictionsSectionProps> = ({
                   <button
                     key={idx}
                     onClick={() => onSelectPrediction(prediction.word)}
-                    className={`flex items-center justify-between ${
-                      selectedPrediction === prediction.word
+                    className={`flex items-center justify-between ${selectedPrediction === prediction.word
                         ? "bg-indigo-100 border-indigo-300 shadow-sm"
                         : "bg-white border-gray-200 hover:bg-indigo-50"
-                    } rounded-lg p-3 transition-colors border`}
+                      } rounded-lg p-3 transition-colors border`}
                   >
                     <span
                       className={
@@ -59,11 +58,10 @@ const PredictionsSection: React.FC<PredictionsSectionProps> = ({
                     <div className="flex items-center">
                       <div className="w-32 h-4 bg-gray-200 rounded-full overflow-hidden mr-2">
                         <div
-                          className={`h-full ${
-                            selectedPrediction === prediction.word
+                          className={`h-full ${selectedPrediction === prediction.word
                               ? "bg-indigo-700"
                               : "bg-indigo-600"
-                          } rounded-full`}
+                            } rounded-full`}
                           style={{ width: `${prediction.score * 100}%` }}
                         ></div>
                       </div>

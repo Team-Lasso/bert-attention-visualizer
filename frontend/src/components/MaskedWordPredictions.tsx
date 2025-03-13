@@ -36,11 +36,10 @@ const MaskedWordPredictions: React.FC<MaskedWordPredictionsProps> = ({
           {tokens.map((token, index) => (
             <span
               key={index}
-              className={`px-2 py-1 rounded ${
-                index === maskedTokenIndex
+              className={`px-2 py-1 rounded ${index === maskedTokenIndex
                   ? "bg-yellow-200 border border-yellow-400 font-bold"
                   : "bg-gray-100"
-              }`}
+                }`}
             >
               {index === maskedTokenIndex ? "[MASK]" : token.text}
             </span>
@@ -56,18 +55,16 @@ const MaskedWordPredictions: React.FC<MaskedWordPredictionsProps> = ({
               <button
                 key={idx}
                 onClick={() => onSelectPrediction(prediction.word)}
-                className={`flex items-center justify-between ${
-                  selectedPrediction === prediction.word
+                className={`flex items-center justify-between ${selectedPrediction === prediction.word
                     ? "bg-indigo-100 border-indigo-300"
                     : "bg-white border-gray-200"
-                } hover:bg-indigo-50 rounded-lg p-3 transition-colors border`}
+                  } hover:bg-indigo-50 rounded-lg p-3 transition-colors border`}
               >
                 <span
-                  className={`${
-                    selectedPrediction === prediction.word
+                  className={`${selectedPrediction === prediction.word
                       ? "font-bold"
                       : "font-medium"
-                  }`}
+                    }`}
                 >
                   {prediction.word}
                 </span>
