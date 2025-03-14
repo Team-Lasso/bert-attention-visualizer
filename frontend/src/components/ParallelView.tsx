@@ -282,7 +282,7 @@ const ParallelView: React.FC<ParallelViewProps> = ({
           const attentionValues = tokens.map((_, targetIdx) => ({
             targetIdx,
             value: head.attention[selectedTokenIndex][targetIdx]
-          })).filter(item => item.value > 0.001);
+          })).filter(item => item.value > 0.00001);
 
           // Sort by value in descending order
           attentionValues.sort((a, b) => b.value - a.value);
@@ -312,7 +312,9 @@ const ParallelView: React.FC<ParallelViewProps> = ({
                 ? Math.round(value * 100) + '%'  // ≥ 1%: no decimal
                 : value >= 0.001
                   ? (value * 100).toFixed(1) + '%' // 0.1% to 0.9%: 1 decimal
-                  : (value * 100).toFixed(2) + '%'; // < 0.1%: 2 decimals
+                  : value >= 0.0001
+                    ? (value * 100).toFixed(2) + '%' // 0.01% to 0.09%: 2 decimals
+                    : (value * 100).toFixed(3) + '%'; // < 0.01%: 3 decimals
 
               // Create percentage badge with improved styling
               const badge = document.createElement('div');
@@ -345,8 +347,8 @@ const ParallelView: React.FC<ParallelViewProps> = ({
           tokens.forEach((_, sourceIdx) => {
             tokens.forEach((_, targetIdx) => {
               const attentionValue = head.attention[sourceIdx][targetIdx];
-              // Higher threshold when no token is selected to reduce visual clutter
-              if (attentionValue > 0.05) {
+              // Lower threshold when no token is selected (1% instead of 5%)
+              if (attentionValue > 0.01) {
                 const sourceToken = sourceTokenElements[sourceIdx];
                 const targetToken = targetTokenElements[targetIdx];
                 const sourcePos = getTokenPosition(sourceToken);

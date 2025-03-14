@@ -20,7 +20,8 @@ const WordAttentionBarChart: React.FC<WordAttentionBarChartProps> = ({ data, wid
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const margin = { top: 30, right: 30, bottom: 70, left: 60 };
+    // Adjusted margins for horizontal layout
+    const margin = { top: 40, right: 120, bottom: 40, left: 80 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -30,7 +31,7 @@ const WordAttentionBarChart: React.FC<WordAttentionBarChartProps> = ({ data, wid
 
     // Create data with indices for sorting
     const indexedData = data.attentionValues.map((value, i) => ({
-      value,
+      value: Math.max(value, 0.00001), // Ensure minimum value for log scale
       word: data.targetWords[i],
       index: i
     }));
@@ -43,49 +44,58 @@ const WordAttentionBarChart: React.FC<WordAttentionBarChartProps> = ({ data, wid
     const sortedValues = indexedData.map(d => d.value);
     const originalIndices = indexedData.map(d => d.index);
 
-    // X scale
-    const x = d3.scaleBand()
+    // For horizontal bars, y is the category (token) and x is the value (attention)
+    const y = d3.scaleBand()
       .domain(sortedWords)
-      .range([0, innerWidth])
-      .padding(0.2);
+      .range([0, innerHeight])
+      .padding(0.3); // More padding for better readability
 
-    // Y scale
-    const y = d3.scaleLinear()
-      .domain([0, d3.max(sortedValues) || 1])
+    // X scale for values (horizontal bars)
+    const maxValue = d3.max(sortedValues) || 1;
+    const x = d3.scaleLinear()
+      .domain([0, maxValue])
       .nice()
-      .range([innerHeight, 0]);
+      .range([0, innerWidth]);
 
-    // Color scale - use a gradient based on original token index for visual consistency
-    const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
+    // Color scale with more vibrant colors
+    const colorScale = d3.scaleOrdinal(d3.schemeSet2)
       .domain(originalIndices.map(String));
 
-    // Add X axis
+    // Add Y axis (categories/tokens)
+    g.append("g")
+      .call(d3.axisLeft(y))
+      .call(g => g.select(".domain").attr("stroke", "#cbd5e1"))
+      .call(g => g.selectAll(".tick line").attr("stroke", "#e2e8f0"))
+      .call(g => g.selectAll(".tick text")
+        .attr("font-size", "11px")
+        .style("fill", "#475569"));
+
+    // Add X axis (values)
     g.append("g")
       .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(x))
-      .selectAll("text")
-      .attr("transform", "translate(-10,0)rotate(-45)")
-      .style("text-anchor", "end")
-      .style("font-size", "11px");
-
-    // Add Y axis
-    g.append("g")
-      .call(d3.axisLeft(y).tickFormat(d => `${(d as number * 100).toFixed(0)}%`))
+      .call(d3.axisBottom(x)
+        .tickFormat(d => `${(d as number * 100).toFixed(d as number >= 0.01 ? 0 : 1)}%`)
+        .ticks(5))
       .call(g => g.select(".domain").attr("stroke", "#cbd5e1"))
       .call(g => g.selectAll(".tick line").attr("stroke", "#e2e8f0"));
 
-    // Add horizontal grid lines
+    // Add vertical grid lines
     g.append("g")
       .attr("class", "grid")
-      .call(d3.axisLeft(y)
-        .tickSize(-innerWidth)
+      .call(d3.axisBottom(x)
+        .tickSize(innerHeight)
         .tickFormat(() => "")
+        .ticks(5)
       )
       .call(g => g.selectAll(".tick line")
         .attr("stroke", "#e2e8f0")
         .attr("stroke-dasharray", "2,2")
       )
-      .call(g => g.select(".domain").remove());
+      .call(g => g.select(".domain").remove())
+      .attr("transform", "translate(0,0)");
+
+    // Calculate a minimum visible bar width
+    const MIN_BAR_WIDTH = 3;
 
     // Add bars with animation
     g.selectAll(".bar")
@@ -93,17 +103,16 @@ const WordAttentionBarChart: React.FC<WordAttentionBarChartProps> = ({ data, wid
       .enter()
       .append("rect")
       .attr("class", "bar")
-      .attr("x", (_, i) => x(sortedWords[i]) || 0)
-      .attr("width", x.bandwidth())
-      .attr("y", innerHeight)
-      .attr("height", 0)
+      .attr("y", (_, i) => y(sortedWords[i]) || 0)
+      .attr("height", y.bandwidth())
+      .attr("x", 0)
+      .attr("width", 0)
       .attr("fill", (_, i) => colorScale(originalIndices[i].toString()))
-      .attr("rx", 2)
-      .attr("ry", 2)
+      .attr("rx", 3)
+      .attr("ry", 3)
       .transition()
       .duration(750)
-      .attr("y", d => y(d))
-      .attr("height", d => innerHeight - y(d));
+      .attr("width", d => Math.max(x(d), MIN_BAR_WIDTH));
 
     // Add bar outlines
     g.selectAll(".bar-outline")
@@ -111,100 +120,63 @@ const WordAttentionBarChart: React.FC<WordAttentionBarChartProps> = ({ data, wid
       .enter()
       .append("rect")
       .attr("class", "bar-outline")
-      .attr("x", (_, i) => x(sortedWords[i]) || 0)
-      .attr("width", x.bandwidth())
-      .attr("y", d => y(d))
-      .attr("height", d => innerHeight - y(d))
+      .attr("y", (_, i) => y(sortedWords[i]) || 0)
+      .attr("height", y.bandwidth())
+      .attr("x", 0)
+      .attr("width", d => Math.max(x(d), MIN_BAR_WIDTH))
       .attr("fill", "none")
       .attr("stroke", "#fff")
       .attr("stroke-width", 1)
-      .attr("rx", 2)
-      .attr("ry", 2);
+      .attr("rx", 3)
+      .attr("ry", 3);
 
-    // Add tooltips
+    // Add tooltips with more detail
     g.selectAll(".bar-tooltip-area")
       .data(sortedValues)
       .enter()
       .append("rect")
       .attr("class", "bar-tooltip-area")
-      .attr("x", (_, i) => x(sortedWords[i]) || 0)
-      .attr("width", x.bandwidth())
-      .attr("y", 0)
-      .attr("height", innerHeight)
+      .attr("y", (_, i) => y(sortedWords[i]) || 0)
+      .attr("height", y.bandwidth())
+      .attr("x", 0)
+      .attr("width", innerWidth)
       .attr("fill", "transparent")
       .append("title")
-      .text((d, i) => `${data.sourceWord} → ${sortedWords[i]}: ${(d * 100).toFixed(1)}%`);
+      .text((d, i) => {
+        const percentage = d * 100;
+        let formattedPercentage;
+        if (percentage >= 1) {
+          formattedPercentage = percentage.toFixed(1);
+        } else if (percentage >= 0.1) {
+          formattedPercentage = percentage.toFixed(2);
+        } else {
+          formattedPercentage = percentage.toFixed(3);
+        }
+        return `${data.sourceWord} → ${sortedWords[i]}: ${formattedPercentage}%`;
+      });
 
-    // Add white background for small value labels to improve readability
-    // Create backgrounds first so they appear behind the text
-    g.selectAll(".bar-label-bg")
-      .data(sortedValues)
-      .enter()
-      .append("rect")
-      .attr("class", "bar-label-bg")
-      .attr("x", (d, i) => {
-        // Only create backgrounds for very small bars
-        const barHeight = innerHeight - y(d);
-        if (barHeight <= 20 && d > 0.0005) {
-          const labelWidth = d >= 0.01 ? 32 : (d >= 0.001 ? 38 : 44); // Estimate width based on decimal places
-          return (x(sortedWords[i]) || 0) + x.bandwidth() / 2 - labelWidth / 2;
-        }
-        return 0;
-      })
-      .attr("y", (d) => {
-        const barHeight = innerHeight - y(d);
-        if (barHeight <= 20 && d > 0.0005) {
-          return y(d) - 15;
-        }
-        return 0;
-      })
-      .attr("width", (d) => {
-        const barHeight = innerHeight - y(d);
-        if (barHeight <= 20 && d > 0.0005) {
-          return d >= 0.01 ? 32 : (d >= 0.001 ? 38 : 44); // Estimate width based on decimal places
-        }
-        return 0;
-      })
-      .attr("height", (d) => {
-        const barHeight = innerHeight - y(d);
-        return (barHeight <= 20 && d > 0.0005) ? 16 : 0;
-      })
-      .attr("fill", "#f8fafc") // Light blue-gray background (more visible than plain white)
-      .attr("opacity", 0.95)  // Higher opacity for better contrast
-      .attr("rx", 2)
-      .attr("stroke", "#cbd5e1") // Add a subtle border
-      .attr("stroke-width", 0.5);
-
-    // Add percentage labels on top of bars (after backgrounds)
+    // Add percentage labels inside or next to bars
     g.selectAll(".bar-label")
       .data(sortedValues)
       .enter()
       .append("text")
       .attr("class", "bar-label")
-      .attr("x", (_, i) => (x(sortedWords[i]) || 0) + x.bandwidth() / 2)
-      .attr("y", d => {
-        // Position labels either on top of the bar or inside it, depending on bar height
-        const barHeight = innerHeight - y(d);
-        const yPosition = barHeight > 20 ? y(d) + 15 : y(d) - 5; // Inside if tall enough, otherwise above
-        return yPosition;
+      .attr("y", (_, i) => (y(sortedWords[i]) || 0) + y.bandwidth() / 2)
+      .attr("x", d => {
+        const barWidth = Math.max(x(d), MIN_BAR_WIDTH);
+        // Place labels inside or outside bar based on width
+        return barWidth > 40 ? barWidth - 5 : barWidth + 5;
       })
-      .attr("text-anchor", "middle")
+      .attr("dy", "0.35em") // Vertical centering
+      .attr("text-anchor", d => x(d) > 40 ? "end" : "start") // Text alignment based on position
       .attr("font-size", "10px")
-      .attr("fill", d => {
-        // Use white text for tall bars, dark blue for small values (better contrast)
-        const barHeight = innerHeight - y(d);
-        return barHeight > 20 ? "white" : "#1e40af"; // Dark blue for small values
-      })
-      .attr("font-weight", d => {
-        // Make small value text bold for better visibility
-        const barHeight = innerHeight - y(d);
-        return barHeight <= 20 ? "bold" : "normal";
-      })
+      .attr("fill", d => x(d) > 40 ? "white" : "#1e40af") // Text color based on position
+      .attr("font-weight", "bold")
       .attr("opacity", 0)
       .text(d => {
-        // Format percentages: use appropriate precision based on value
+        // Format percentages with appropriate precision
         if (d >= 0.01) {
-          return `${(d * 100).toFixed(1)}%`; // 1% or above: 1 decimal place
+          return `${(d * 100).toFixed(1)}%`; // ≥ 1%: 1 decimal place
         } else if (d >= 0.001) {
           return `${(d * 100).toFixed(2)}%`; // 0.1% to 0.99%: 2 decimal places
         } else if (d > 0) {
@@ -216,8 +188,7 @@ const WordAttentionBarChart: React.FC<WordAttentionBarChartProps> = ({ data, wid
       .transition()
       .delay(750)
       .duration(300)
-      // Show all labels except those for extremely small values
-      .attr("opacity", d => d > 0.0005 ? 1 : 0);
+      .attr("opacity", 1);
 
     // Add title
     svg.append("text")
@@ -232,17 +203,7 @@ const WordAttentionBarChart: React.FC<WordAttentionBarChartProps> = ({ data, wid
     // Add X axis label
     g.append("text")
       .attr("x", innerWidth / 2)
-      .attr("y", innerHeight + margin.bottom - 10)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#64748b")
-      .attr("font-size", "12px")
-      .text("Target Tokens");
-
-    // Add Y axis label
-    g.append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -innerHeight / 2)
-      .attr("y", -margin.left + 15)
+      .attr("y", innerHeight + 35)
       .attr("text-anchor", "middle")
       .attr("fill", "#64748b")
       .attr("font-size", "12px")

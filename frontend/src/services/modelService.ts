@@ -197,7 +197,7 @@ export const getMaskedPredictions = async (
       headers,
       body: JSON.stringify({
         text,
-        mask_index: maskIndex+1, //!: Chen fix this, but it may not be the best way for off index question.
+        mask_index: maskIndex + 1, //!: Chen fix this, but it may not be the best way for off index question.
         model_name: modelName, //! 
         top_k: topK,
       }),
@@ -291,5 +291,85 @@ export const getAttentionData = async (text: string, modelName: string): Promise
   } catch (error) {
     console.error('Error getting attention data:', error);
     throw error; // Re-throw the error instead of falling back to sample data
+  }
+};
+
+/**
+ * Get comparison of attention data before and after replacing a masked token
+ * This calls the attention_comparison endpoint in the backend
+ */
+export const getAttentionComparison = async (
+  text: string,
+  maskedIndex: number,
+  replacementWord: string,
+  modelName: string
+): Promise<{ before_attention: AttentionData, after_attention: AttentionData }> => {
+  try {
+    const isRoberta = modelName.includes('roberta');
+    console.log(`Fetching attention comparison for: "${text}" with replacement "${replacementWord}" at index ${maskedIndex} (using ${isRoberta ? 'RoBERTa' : 'BERT'})`);
+
+    // For RoBERTa, we need to handle token vs word indices differently
+    // The backend now handles this internally with robust token-to-word mapping
+
+    // Splitting tokens and logging for debugging
+    const tokens = text.split(/\s+/);
+    console.log(`Text tokens (${tokens.length}): ${JSON.stringify(tokens)}`);
+
+    // If maskedIndex is out of bounds, provide a safer index
+    const safeIndex = Math.min(maskedIndex, tokens.length - 1);
+    if (safeIndex !== maskedIndex) {
+      console.warn(`Masked index ${maskedIndex} was out of range, adjusted to ${safeIndex}`);
+    }
+
+    const response = await fetch(`${API_URL}/attention_comparison`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        masked_index: maskedIndex,
+        replacement_word: replacementWord,
+        model_name: modelName,
+      }),
+    });
+
+    if (response.status === 404) {
+      throw new Error('Attention comparison endpoint not found. Please make sure the backend supports the /attention_comparison endpoint.');
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Error from attention comparison endpoint: ${response.status}`, errorText);
+      throw new Error(`Failed to get attention comparison data: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('Successfully received attention comparison data from backend');
+
+    // Validate the data structure
+    if (!data.before_attention || !data.after_attention) {
+      throw new Error('Backend response is missing before_attention or after_attention field');
+    }
+
+    // Log the "before" and "after" tokens for debugging
+    console.log(`Before tokens (${data.before_attention.tokens.length}): ${data.before_attention.tokens.map((t: { text: string }) => t.text).join(', ')}`);
+    console.log(`After tokens (${data.after_attention.tokens.length}): ${data.after_attention.tokens.map((t: { text: string }) => t.text).join(', ')}`);
+
+    // Add maskPredictions placeholders if not present
+    if (!data.before_attention.maskPredictions) {
+      data.before_attention.maskPredictions = [];
+    }
+    if (!data.after_attention.maskPredictions) {
+      data.after_attention.maskPredictions = [];
+    }
+
+    return {
+      before_attention: data.before_attention,
+      after_attention: data.after_attention
+    };
+  } catch (error) {
+    console.error('Error getting attention comparison data:', error);
+    throw error;
   }
 };

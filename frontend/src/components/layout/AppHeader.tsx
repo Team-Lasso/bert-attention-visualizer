@@ -1,5 +1,5 @@
 import React from "react";
-import { Brain, Zap } from "lucide-react";
+import { Brain, Zap, Server } from "lucide-react";
 
 interface AppHeaderProps {
   currentModelName: string;
@@ -29,6 +29,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
       </div>
       <div className="flex items-center space-x-3">
+        <div className="flex items-center bg-gray-100 px-3 py-2 rounded-md">
+          <Server size={16} className="text-indigo-600 mr-2" />
+          <span className="text-sm font-medium text-gray-700">
+            Current Model: <span className="text-indigo-700">{currentModelName}</span>
+          </span>
+        </div>
         <button
           onClick={onToggleModelSelector}
           className="px-3 py-2 rounded-md bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors text-sm font-medium flex items-center"

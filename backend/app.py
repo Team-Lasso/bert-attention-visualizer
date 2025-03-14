@@ -2,7 +2,7 @@ import torch
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Set, Pattern, Match
+from typing import List, Set, Pattern, Match, Optional
 import re
 import nltk
 from nltk.tag import pos_tag
@@ -70,6 +70,51 @@ def clean_roberta_token(token: str) -> str:
     if token.startswith('G'):
         return token[1:]
     return token
+
+# Helper function to check if token is at the start of a word in RoBERTa
+def is_word_start_token(token: str) -> bool:
+    """
+    Check if a RoBERTa token is at the start of a word (has the 'Ġ' prefix)
+    """
+    return token.startswith('Ġ')
+
+# Helper function to map RoBERTa tokens to word positions
+def map_roberta_tokens_to_words(tokens, original_text):
+    """
+    Create a mapping from RoBERTa tokens to words in the original text.
+    Returns a dictionary mapping token indices to (word_idx, is_full_word) tuples.
+    """
+    words = original_text.split()
+    token_to_word_map = {}
+    
+    # Skip special tokens like <s> and </s>
+    token_texts = [t["text"] for t in tokens if t["text"] not in ["<s>", "</s>", "<pad>"]]
+    
+    # Track which token is the start of a word
+    word_starts = [is_word_start_token(t) or i == 0 for i, t in enumerate(token_texts)]
+    
+    # Count how many tokens are in each word
+    word_idx = 0
+    current_word_tokens = []
+    
+    for i, (token, is_start) in enumerate(zip(token_texts, word_starts)):
+        if is_start and current_word_tokens:
+            # We've found the start of a new word, finalize the previous word
+            word_idx += 1
+            current_word_tokens = []
+        
+        # Clean the token for matching
+        clean_token = clean_roberta_token(token)
+        current_word_tokens.append(clean_token)
+        
+        # Find actual token index in the original tokens list
+        token_idx = next((idx for idx, t in enumerate(tokens) if t["text"] == token), None)
+        
+        if token_idx is not None:
+            # Map this token to its word position
+            token_to_word_map[token_idx] = (min(word_idx, len(words) - 1), len(current_word_tokens) == 1)
+    
+    return token_to_word_map
 
 # Helper function to load models on demand
 def get_model_and_tokenizer(model_name):
@@ -178,6 +223,16 @@ class AttentionData(BaseModel):
 
 class AttentionResponse(BaseModel):
     attention_data: AttentionData
+
+class ComparisonRequest(BaseModel):
+    text: str
+    masked_index: int
+    replacement_word: str
+    model_name: str = "bert-base-uncased"
+
+class AttentionComparisonResponse(BaseModel):
+    before_attention: AttentionData
+    after_attention: AttentionData
 
 @app.get("/models")
 async def get_available_models():
@@ -787,6 +842,443 @@ async def get_attention_matrices(request: AttentionRequest):
     
     except Exception as e:
         print(f"Attention extraction error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/attention_comparison", response_model=AttentionComparisonResponse)
+async def get_attention_comparison(request: ComparisonRequest):
+    """
+    Dispatcher for attention comparison - routes to the appropriate model-specific implementation
+    """
+    # Log request details
+    print(f"\n\n=== ATTENTION COMPARISON REQUEST ===")
+    print(f"Text: '{request.text}'")
+    print(f"Masked index: {request.masked_index}")
+    print(f"Replacement word: '{request.replacement_word}'")
+    print(f"Model: {request.model_name}")
+    
+    # Dispatch based on model type
+    if "roberta" in request.model_name.lower():
+        return await get_attention_comparison_roberta(request)
+    else:
+        return await get_attention_comparison_bert(request)
+
+
+async def get_attention_comparison_bert(request: ComparisonRequest):
+    """
+    BERT-specific implementation of attention comparison
+    """
+    try:
+        print(f"\n=== USING BERT ATTENTION COMPARISON IMPLEMENTATION ===")
+        
+        # 1. Get the "before" attention data
+        before_attention_request = AttentionRequest(text=request.text, model_name=request.model_name)
+        before_data = (await get_attention_matrices(before_attention_request))["attention_data"]
+        
+        # 2. Tokenize the text
+        tokenizer_response = await tokenize_text(TokenizeRequest(text=request.text, model_name=request.model_name))
+        tokens = tokenizer_response["tokens"]
+        
+        # Print all tokens for debugging
+        print(f"\nTokens ({len(tokens)}):")
+        for i, t in enumerate(tokens):
+            print(f"  {i}: '{t['text']}'")
+        
+        # Validate masked_index
+        if request.masked_index < 0 or request.masked_index >= len(tokens):
+            raise HTTPException(status_code=400, detail=f"Invalid token index {request.masked_index}. Valid range: 0-{len(tokens)-1}")
+        
+        # Get the selected token
+        selected_token = tokens[request.masked_index]["text"]
+        print(f"\nSelected token at index {request.masked_index}: '{selected_token}'")
+        
+        # Get the tokenizer for this model
+        _, tokenizer = get_model_and_tokenizer(request.model_name)
+        
+        # Detect if we're working with a punctuation token
+        is_punctuation = selected_token in [".", ",", "!", "?", ":", ";", "-", "'", "\""]
+        print(f"Is punctuation token: {is_punctuation}")
+        
+        # Get full original text
+        original_text = request.text
+        
+        # HANDLE PUNCTUATION 
+        if is_punctuation:
+            print(f"\nUsing BERT punctuation replacement approach")
+            
+            # Find all occurrences of this punctuation in the original text
+            punctuation_positions = [pos for pos, char in enumerate(original_text) if char == selected_token]
+            print(f"Found punctuation '{selected_token}' at positions: {punctuation_positions}")
+            
+            if not punctuation_positions:
+                print(f"Warning: Could not find punctuation '{selected_token}' in text, using fallback")
+                # Fallback to word-based approach
+                is_punctuation = False
+            else:
+                # Determine which occurrence of the punctuation corresponds to our token
+                # We'll use a heuristic based on the token's position
+                
+                # Count non-special tokens before our selected token
+                non_special_tokens_before = sum(1 for t in tokens[:request.masked_index] 
+                                             if t["text"] not in ["[CLS]", "[SEP]"])
+                
+                # Select the corresponding punctuation position (or last one if out of range)
+                punct_idx = min(non_special_tokens_before, len(punctuation_positions) - 1)
+                position_to_replace = punctuation_positions[punct_idx]
+                
+                print(f"Selected punctuation occurrence {punct_idx} at position {position_to_replace}")
+                
+                # Replace just the punctuation character
+                replaced_text = original_text[:position_to_replace] + request.replacement_word + original_text[position_to_replace+1:]
+                print(f"Original text: '{original_text}'")
+                print(f"Replaced text: '{replaced_text}'")
+                
+                # Get the after attention data
+                after_attention_request = AttentionRequest(text=replaced_text, model_name=request.model_name)
+                after_data = (await get_attention_matrices(after_attention_request))["attention_data"]
+                
+                # Return comparison data
+                return {"before_attention": before_data, "after_attention": after_data}
+        
+        # HANDLE REGULAR WORDS FOR BERT
+        print(f"\nUsing BERT word replacement approach")
+        words = original_text.split()
+        print(f"Words: {words}")
+        
+        # Build a mapping of token indices to original text positions
+        token_positions = []
+        current_pos = 0
+        
+        for token in tokens:
+            # Skip special tokens
+            if token["text"] in ["[CLS]", "[SEP]"]:
+                token_positions.append(None)
+                continue
+            
+            # For regular tokens, find their position in the original text
+            token_text = token["text"].replace("##", "")
+            
+            # Find the token in the original text starting from current position
+            start_pos = original_text.lower().find(token_text.lower(), current_pos)
+            if start_pos != -1:
+                token_positions.append((start_pos, start_pos + len(token_text)))
+                current_pos = start_pos + len(token_text)
+            else:
+                # If token not found directly, it might be due to case sensitivity or special handling
+                token_positions.append(None)
+        
+        print(f"Token positions: {token_positions}")
+        
+        # Now determine which word(s) correspond to our selected token
+        if request.masked_index < len(token_positions) and token_positions[request.masked_index] is not None:
+            token_start, token_end = token_positions[request.masked_index]
+            
+            # Find which word contains this token
+            current_pos = 0
+            target_word_idx = None
+            
+            for i, word in enumerate(words):
+                word_start = original_text.lower().find(word.lower(), current_pos)
+                if word_start == -1:  # Skip if word not found
+                    continue
+                    
+                word_end = word_start + len(word)
+                
+                # Check if token is within this word
+                if (token_start >= word_start and token_start < word_end) or \
+                   (token_end > word_start and token_end <= word_end):
+                    target_word_idx = i
+                    break
+                
+                current_pos = word_end
+            
+            if target_word_idx is not None:
+                print(f"Selected token maps to word {target_word_idx}: '{words[target_word_idx]}'")
+                
+                # Check if the word has punctuation at the end
+                original_word = words[target_word_idx]
+                punctuation_suffix = ""
+                
+                for char in ['.', ',', '!', '?', ':', ';']:
+                    if original_word.endswith(char):
+                        punctuation_suffix = char
+                        break
+                
+                # Replace the word, preserving any punctuation
+                replaced_word = request.replacement_word
+                if punctuation_suffix and not replaced_word.endswith(punctuation_suffix):
+                    replaced_word = replaced_word + punctuation_suffix
+                    print(f"Preserving punctuation: {request.replacement_word} → {replaced_word}")
+                
+                # Create the new text
+                words[target_word_idx] = replaced_word
+                replaced_text = " ".join(words)
+                
+                print(f"Original text: '{original_text}'")
+                print(f"Original word: '{original_word}'")
+                print(f"Replacement: '{replaced_word}'")
+                print(f"Replaced text: '{replaced_text}'")
+            else:
+                # Fallback: replace the word closest to the token position
+                print(f"Could not map token to a specific word, using fallback")
+                
+                # Use a simple approach: split by spaces and replace the closest word
+                # Adjust the index to account for [CLS] token
+                adjusted_index = max(0, request.masked_index - 1)
+                word_idx = min(adjusted_index, len(words) - 1)
+                
+                # Check for punctuation
+                original_word = words[word_idx]
+                punctuation_suffix = ""
+                
+                for char in ['.', ',', '!', '?', ':', ';']:
+                    if original_word.endswith(char):
+                        punctuation_suffix = char
+                        break
+                
+                # Replace the word, preserving any punctuation
+                replaced_word = request.replacement_word
+                if punctuation_suffix and not replaced_word.endswith(punctuation_suffix):
+                    replaced_word = replaced_word + punctuation_suffix
+                
+                words[word_idx] = replaced_word
+                replaced_text = " ".join(words)
+                
+                print(f"Fallback replacement: '{original_word}' → '{replaced_word}'")
+                print(f"Replaced text: '{replaced_text}'")
+        else:
+            # Fallback if we couldn't find token position
+            print(f"Could not determine token position, using simple word replacement")
+            words = original_text.split()
+            
+            # Adjust for special tokens in BERT ([CLS])
+            adjusted_index = max(0, request.masked_index - 1)
+            word_idx = min(adjusted_index, len(words) - 1)
+            
+            # Check for punctuation
+            original_word = words[word_idx]
+            punctuation_suffix = ""
+            
+            for char in ['.', ',', '!', '?', ':', ';']:
+                if original_word.endswith(char):
+                    punctuation_suffix = char
+                    break
+            
+            # Replace the word, preserving any punctuation
+            replaced_word = request.replacement_word
+            if punctuation_suffix and not replaced_word.endswith(punctuation_suffix):
+                replaced_word = replaced_word + punctuation_suffix
+            
+            words[word_idx] = replaced_word
+            replaced_text = " ".join(words)
+            
+            print(f"Simple replacement: '{original_word}' → '{replaced_word}'")
+            print(f"Replaced text: '{replaced_text}'")
+        
+        # Get the after attention data
+        after_attention_request = AttentionRequest(text=replaced_text, model_name=request.model_name)
+        after_data = (await get_attention_matrices(after_attention_request))["attention_data"]
+        
+        # Return comparison data
+        return {"before_attention": before_data, "after_attention": after_data}
+    
+    except Exception as e:
+        print(f"BERT Attention comparison error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def get_attention_comparison_roberta(request: ComparisonRequest):
+    """
+    RoBERTa-specific implementation of attention comparison
+    """
+    try:
+        print(f"\n=== USING ROBERTA ATTENTION COMPARISON IMPLEMENTATION ===")
+        
+        # 1. Get the "before" attention data
+        before_attention_request = AttentionRequest(text=request.text, model_name=request.model_name)
+        before_data = (await get_attention_matrices(before_attention_request))["attention_data"]
+        
+        # 2. Tokenize the text
+        tokenizer_response = await tokenize_text(TokenizeRequest(text=request.text, model_name=request.model_name))
+        tokens = tokenizer_response["tokens"]
+        
+        # Print all tokens for debugging
+        print(f"\nTokens ({len(tokens)}):")
+        for i, t in enumerate(tokens):
+            print(f"  {i}: '{t['text']}'")
+        
+        # Validate masked_index
+        if request.masked_index < 0 or request.masked_index >= len(tokens):
+            raise HTTPException(status_code=400, detail=f"Invalid token index {request.masked_index}. Valid range: 0-{len(tokens)-1}")
+        
+        # Get the selected token
+        selected_token = tokens[request.masked_index]["text"]
+        print(f"\nSelected token at index {request.masked_index}: '{selected_token}'")
+        
+        # Get the tokenizer for this model
+        _, tokenizer = get_model_and_tokenizer(request.model_name)
+        
+        # Get original text
+        original_text = request.text
+        print(f"Original text: '{original_text}'")
+        
+        # Split the text into words for processing
+        words = original_text.split()
+        print(f"Words: {words}")
+        
+        # Handle punctuation tokens differently
+        is_punctuation = selected_token in [".", ",", "!", "?", ":", ";", "-", "'", "\""]
+        print(f"Is punctuation token: {is_punctuation}")
+        
+        if is_punctuation:
+            print(f"\nUsing punctuation replacement approach for RoBERTa")
+            
+            # Find all occurrences of this punctuation in the original text
+            punctuation_positions = [pos for pos, char in enumerate(original_text) if char == selected_token]
+            print(f"Found punctuation '{selected_token}' at positions: {punctuation_positions}")
+            
+            if punctuation_positions:
+                # For RoBERTa, we need to count tokens slightly differently
+                # Count actual tokens before our selected token, skipping special tokens
+                non_special_tokens_before = sum(1 for t in tokens[:request.masked_index] 
+                                            if t["text"] not in ["<s>", "</s>", "<pad>"])
+                
+                # Select the corresponding punctuation position
+                punct_idx = min(non_special_tokens_before, len(punctuation_positions) - 1)
+                position_to_replace = punctuation_positions[punct_idx]
+                
+                print(f"Selected punctuation occurrence {punct_idx} at position {position_to_replace}")
+                
+                # Replace just the punctuation character
+                replaced_text = original_text[:position_to_replace] + request.replacement_word + original_text[position_to_replace+1:]
+                print(f"Replaced text: '{replaced_text}'")
+                
+                # Get the "after" attention data
+                after_attention_request = AttentionRequest(text=replaced_text, model_name=request.model_name)
+                after_data = (await get_attention_matrices(after_attention_request))["attention_data"]
+                
+                # Return the comparison data
+                return {"before_attention": before_data, "after_attention": after_data}
+        
+        # For regular (non-punctuation) tokens, use a more robust approach
+        print(f"\nUsing improved token-to-word mapping for RoBERTa")
+        
+        # Step 1: Create a mapping from tokens to words using our helper function
+        token_to_word_map = map_roberta_tokens_to_words(tokens, original_text)
+        print(f"Token-to-word mapping: {token_to_word_map}")
+        
+        # Step 2: Find the target word index for the selected token
+        if request.masked_index in token_to_word_map:
+            word_idx, is_full_word = token_to_word_map[request.masked_index]
+            print(f"Selected token maps to word index {word_idx}: '{words[word_idx]}', is full word: {is_full_word}")
+            
+            # Step 3: Replace the target word with the replacement, preserving punctuation if needed
+            original_word = words[word_idx]
+            
+            # Check for punctuation at the end of the word
+            punctuation_suffix = ""
+            for char in ['.', ',', '!', '?', ':', ';']:
+                if original_word.endswith(char):
+                    punctuation_suffix = char
+                    break
+            
+            # Replace the word, preserving punctuation
+            replaced_word = request.replacement_word
+            if punctuation_suffix and not replaced_word.endswith(punctuation_suffix):
+                replaced_word += punctuation_suffix
+                print(f"Preserving punctuation: {request.replacement_word} → {replaced_word}")
+            
+            # Create the replaced text
+            words[word_idx] = replaced_word
+            replaced_text = " ".join(words)
+            
+            print(f"Original word: '{original_word}'")
+            print(f"Replacement: '{replaced_word}'")
+            print(f"Replaced text: '{replaced_text}'")
+        else:
+            # Fallback method: Try to determine the word index from token content
+            print("Token index not found in mapping, using fallback approach")
+            
+            # First, try to find which word contains this token's text (minus the Ġ character)
+            clean_token_text = clean_roberta_token(selected_token)
+            word_candidates = []
+            
+            for i, word in enumerate(words):
+                if clean_token_text in word:
+                    word_candidates.append(i)
+                    print(f"Found token text '{clean_token_text}' in word '{word}' at position {i}")
+                    
+            if word_candidates:
+                # Use the first occurrence if multiple matches
+                word_idx = word_candidates[0]
+                original_word = words[word_idx]
+                
+                # Check for punctuation at the end
+                punctuation_suffix = ""
+                for char in ['.', ',', '!', '?', ':', ';']:
+                    if original_word.endswith(char):
+                        punctuation_suffix = char
+                        break
+                
+                # Replace the word, preserving punctuation
+                replaced_word = request.replacement_word
+                if punctuation_suffix and not replaced_word.endswith(punctuation_suffix):
+                    replaced_word += punctuation_suffix
+                    print(f"Preserving punctuation: {request.replacement_word} → {replaced_word}")
+                
+                # Create the replaced text
+                words[word_idx] = replaced_word
+                replaced_text = " ".join(words)
+                
+                print(f"Original word: '{original_word}'")
+                print(f"Replacement: '{replaced_word}'")
+                print(f"Replaced text: '{replaced_text}'")
+            else:
+                # Final fallback: Use adjusted index if nothing else works
+                print("Content-based mapping failed, using position-based fallback")
+                
+                # Skip special tokens to calculate position
+                adjusted_index = request.masked_index
+                if adjusted_index > 0:  # Skip <s> token
+                    adjusted_index -= 1
+                
+                # Ensure we're within bounds
+                word_idx = min(adjusted_index, len(words) - 1)
+                original_word = words[word_idx]
+                
+                # Check for punctuation at the end
+                punctuation_suffix = ""
+                for char in ['.', ',', '!', '?', ':', ';']:
+                    if original_word.endswith(char):
+                        punctuation_suffix = char
+                        break
+                
+                # Replace the word, preserving punctuation
+                replaced_word = request.replacement_word
+                if punctuation_suffix and not replaced_word.endswith(punctuation_suffix):
+                    replaced_word += punctuation_suffix
+                
+                # Create the replaced text
+                words[word_idx] = replaced_word
+                replaced_text = " ".join(words)
+                
+                print(f"Fallback replacement at position {word_idx}")
+                print(f"Original word: '{original_word}'")
+                print(f"Replacement: '{replaced_word}'")
+                print(f"Replaced text: '{replaced_text}'")
+        
+        # Get the "after" attention data with the replaced word
+        after_request = AttentionRequest(text=replaced_text, model_name=request.model_name)
+        after_data = (await get_attention_matrices(after_request))["attention_data"]
+        
+        # Return the comparison data
+        return {"before_attention": before_data, "after_attention": after_data}
+    
+    except Exception as e:
+        print(f"RoBERTa Attention comparison error: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

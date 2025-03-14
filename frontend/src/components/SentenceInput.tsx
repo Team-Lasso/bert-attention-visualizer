@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send } from 'lucide-react';
 
 /*
@@ -7,10 +7,22 @@ this component is called in SentenceInputSection.tsx
 interface SentenceInputProps {
   onSentenceSubmit: (sentence: string) => void;
   isLoading: boolean;
+  initialValue?: string;
 }
 
-const SentenceInput: React.FC<SentenceInputProps> = ({ onSentenceSubmit, isLoading }) => {
-  const [sentence, setSentence] = useState('');
+const SentenceInput: React.FC<SentenceInputProps> = ({
+  onSentenceSubmit,
+  isLoading,
+  initialValue = ''
+}) => {
+  const [sentence, setSentence] = useState(initialValue);
+
+  // Update local state when initialValue changes
+  useEffect(() => {
+    if (initialValue) {
+      setSentence(initialValue);
+    }
+  }, [initialValue]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();  //prevent the default behavior, prevent the page from refreshing

@@ -3,14 +3,11 @@ import useAttentionVisualizer from "../hooks/useAttentionVisualizer";
 import { SampleData } from "../types";
 import { pretrainedModels } from "../data/pretrainedModels";
 
-
-
 // Layout Components
 import AppHeader from "./layout/AppHeader";
 import InfoPanel from "./layout/InfoPanel";
 
 // Model Components
-import ModelInfo from "./model/ModelInfo";
 import PretrainedModelSelector from "./PretrainedModelSelector";
 
 // Input Components
@@ -21,7 +18,7 @@ import PredictionsSection from "./input/PredictionsSection";
 // Visualization Components
 import VisualizationControls from "./visualization/VisualizationControls";
 import VisualizationDisplay from "./visualization/VisualizationDisplay";
-import AttentionHeadSelector from "./AttentionHeadSelector";
+import AttentionComparisonView from "./visualization/AttentionComparisonView";
 
 interface AttentionVisualizerPageProps {
   datasets: SampleData[];
@@ -36,6 +33,7 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
     currentData,
     isProcessing,
     hasUserInput,
+    currentSentence,
 
     // model information
     currentModel,
@@ -57,7 +55,6 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
     selectedTokenIndex,
     maskedTokenIndex,
     selectedPrediction,
-    selectedTokenText,
     maskPredictions,
 
     // generated data
@@ -70,6 +67,15 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
     handleModelSelect,
     handleLoadModel,
     handleSelectPrediction,
+
+    // Add comparison-related states and functions
+    isComparing,
+    isLoadingComparison,
+    comparisonData,
+    comparisonView,
+    exitComparison,
+    setComparisonView,
+    handleViewAttentionComparison,
   } = useAttentionVisualizer(datasets);
 
   return (
@@ -98,85 +104,66 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
         {/* Input Section - Three columns */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <SentenceInputSection
+            sentence={currentSentence}
+            isProcessing={isProcessing}
             onSentenceSubmit={handleSentenceSubmit}
-            isLoading={isProcessing}
-            currentModelName={currentModel?.name || "Default Model"}
           />
 
           <WordMaskingSection
-            tokens={tokensWithIndex || []}
+            tokens={tokensWithIndex}
+            hasUserInput={hasUserInput}
             onMaskWord={handleMaskWord}
             maskedTokenIndex={maskedTokenIndex}
-            hasUserInput={hasUserInput}
           />
 
           <PredictionsSection
+            hasUserInput={hasUserInput}
             maskedTokenIndex={maskedTokenIndex}
-            maskPredictions={maskPredictions || []}
+            maskPredictions={maskPredictions}
             selectedPrediction={selectedPrediction}
             onSelectPrediction={handleSelectPrediction}
-            hasUserInput={hasUserInput}
+            onViewComparison={handleViewAttentionComparison}
+            isLoadingComparison={isLoadingComparison}
           />
         </div>
 
-        {/* Main Visualization Area */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Sidebar */}
-          <div className="md:col-span-1 space-y-4">
-            {currentData && currentData.layers && currentData.layers.length > 0 ? (
-              <AttentionHeadSelector
-                layers={currentData.layers.map((layer, index) => ({
-                  ...layer,
-                  layerIndex: index,
-                  heads: layer.heads.map((head, headIndex) => ({
-                    ...head,
-                    headIndex,
-                  })),
-                }))}
+        {/* Visualization Section */}
+        {hasUserInput && (
+          <div className="grid grid-cols-1 gap-6">
+            <VisualizationControls
+              selectedLayer={selectedLayer}
+              selectedHead={selectedHead}
+              activeView={isComparing ? comparisonView : activeView}
+              onSelectLayer={setSelectedLayer}
+              onSelectHead={setSelectedHead}
+              onSwitchView={isComparing ? setComparisonView : switchView}
+              totalLayers={currentData?.layers?.length || 0}
+              totalHeads={currentData?.layers?.[0]?.heads?.length || 0}
+              view="single"
+            />
+
+            {/* Show either comparison view or regular view based on state */}
+            {isComparing && comparisonData.before && comparisonData.after ? (
+              <AttentionComparisonView
+                beforeData={comparisonData.before}
+                afterData={comparisonData.after}
                 selectedLayer={selectedLayer}
                 selectedHead={selectedHead}
-                onLayerChange={setSelectedLayer}
-                onHeadChange={setSelectedHead}
+                selectedTokenIndex={selectedTokenIndex}
+                activeView={comparisonView}
+                replacementWord={comparisonData.replacementWord}
+                wordIndex={comparisonData.wordIndex}
+                onExitComparison={exitComparison}
               />
             ) : (
-              <div className="flex flex-col space-y-4 p-5 bg-white rounded-xl shadow-md border border-indigo-100">
-                <div className="text-center p-4">
-                  <h3 className="text-lg font-medium text-gray-700 mb-2">No Data Available</h3>
-                  <p className="text-sm text-gray-600">
-                    Please enter a sentence in the input field above to visualize attention data.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {currentData && currentData.tokens && (
-              <ModelInfo
-                model={currentModel}
-                tokenCount={currentData.tokens?.length || 0}
-                layerCount={currentData.layers?.length || 0}
-                headsPerLayer={currentData.layers?.[0]?.heads?.length || 0}
-              />
-            )}
-
-            {currentData && currentData.layers && currentData.layers.length > 0 && (
-              <VisualizationControls
-                activeView={activeView}
-                onViewChange={switchView}
-                selectedLayer={selectedLayer}
-                selectedHead={selectedHead}
-                selectedTokenText={selectedTokenText || ""}
-              />
-            )}
-          </div>
-
-          {/* Main Visualization */}
-          <div className="md:col-span-3">
-            {currentData && currentData.layers && currentData.layers.length > 0 && currentHeadData ? (
               <VisualizationDisplay
-                tokens={tokensWithIndex || []}
-                currentHead={{
+                tokens={tokensWithIndex}
+                currentHead={currentHeadData ? {
                   ...currentHeadData,
+                  headIndex: selectedHead
+                } : {
                   headIndex: selectedHead,
+                  attention: []
                 }}
                 selectedLayer={selectedLayer}
                 selectedHead={selectedHead}
@@ -184,25 +171,11 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
                 activeView={activeView}
                 wordAttentionData={wordAttentionData}
               />
-            ) : (
-              <div className="bg-white p-8 rounded-xl shadow-md border border-indigo-100 h-full flex items-center justify-center">
-                <div className="text-center">
-                  <h3 className="text-xl font-medium text-gray-700 mb-3">Attention Visualization</h3>
-                  <p className="text-gray-600 mb-4">
-                    Enter a sentence above to see attention patterns from the model.
-                  </p>
-                  <div className="inline-block p-3 bg-indigo-100 rounded-full text-indigo-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
             )}
           </div>
-        </div>
+        )}
 
-        {/* Information Panel */}
+        {/* Info Panel */}
         <InfoPanel />
       </div>
     </div>

@@ -20,6 +20,7 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [customDatasetCount, setCustomDatasetCount] = useState(0);
   const [currentModelId, setCurrentModelId] = useState<string>("bert-base-uncased");
+  const [currentSentence, setCurrentSentence] = useState<string>("");
 
   // get the current data
   // Use empty attention data if there's no selected dataset
@@ -27,19 +28,19 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
 
   // sentence submission processing
   const handleSentenceSubmit = useCallback(
-    async (sentence: string, onDatasetAdded: () => void = () => {}, modelId: string = "bert-base-uncased") => {
+    async (sentence: string, onDatasetAdded: () => void = () => { }, modelId: string = "bert-base-uncased") => {
       if (!sentence.trim()) return;
-      
+
       setIsProcessing(true);
       setCurrentModelId(modelId);
+      setCurrentSentence(sentence);
 
       try {
         // Use the API to get real attention data
         const attentionData = await getAttentionData(sentence, modelId);
-        
-        const newDatasetName = `Custom ${customDatasetCount + 1}: "${
-          sentence.length > 30 ? sentence.substring(0, 27) + "..." : sentence
-        }"`;
+
+        const newDatasetName = `Custom ${customDatasetCount + 1}: "${sentence.length > 30 ? sentence.substring(0, 27) + "..." : sentence
+          }"`;
 
         // Add the dataset to the datasets
         setDatasets((prev) => [
@@ -53,7 +54,7 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
         // Update customDatasetCount and selectedDatasetIndex
         setCustomDatasetCount((prev) => prev + 1);
         setSelectedDatasetIndex(datasets.length);
-        
+
         // Call the callback function
         onDatasetAdded();
       } catch (error) {
@@ -70,9 +71,12 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
     (index: number) => {
       if (index >= 0 && index < datasets.length) {
         setSelectedDatasetIndex(index);
+        // Also update current sentence when switching datasets
+        const datasetSentence = datasets[index]?.name?.split(':"')[1]?.slice(0, -1) || "";
+        setCurrentSentence(datasetSentence);
       }
     },
-    [datasets.length]
+    [datasets]
   );
 
   // check if there is a user input sentence (not the initial sample data)
@@ -87,11 +91,13 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
     currentData,
     hasUserInput,
     currentModelId,
+    currentSentence,
 
     // operation functions
     handleSentenceSubmit,
     selectDataset,
     setSelectedDatasetIndex,
     setCurrentModelId,
+    setCurrentSentence,
   };
 };
