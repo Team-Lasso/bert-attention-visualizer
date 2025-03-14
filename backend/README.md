@@ -1,5 +1,5 @@
 # todo:
- 1. word replacement  UI & it's back end
+ 1. ~~word replacement UI & it's back end~~ ✓ (Implemented via `/attention_comparison` endpoint)
  2. extened the attetion page when it have more word.
  3. backend maybe not correct for attention heatmap and flow
 
@@ -11,10 +11,14 @@ This backend provides a FastAPI service for tokenization, attention visualizatio
 ## Requirements
 
 - Python 3.8+
-- PyTorch
-- Transformers
-- FastAPI
-- Uvicorn
+- PyTorch 2.0.0+
+- Transformers 4.27.4+
+- FastAPI 0.95.0+
+- Uvicorn 0.21.1+
+- Pydantic 2.0.0+
+- NLTK 3.8.1+
+- NumPy 1.24.0+
+- python-multipart 0.0.6+
 
 ## Installation
 
@@ -131,6 +135,31 @@ Response:
 }
 ```
 
+### POST /attention_comparison
+Compares attention patterns before and after replacing a word in the input text. This is useful for analyzing how word replacements affect the model's attention distribution.
+
+Request body:
+```json
+{
+  "text": "The cat sat on the mat",
+  "masked_index": 2,
+  "replacement_word": "dog",
+  "model_name": "bert-base-uncased"
+}
+```
+
+Response:
+```json
+{
+  "before_attention": {
+    // Original attention data structure (same format as /attention endpoint)
+  },
+  "after_attention": {
+    // Attention data after replacement (same format as /attention endpoint)
+  }
+}
+```
+
 ## Available Models
 
 - `bert-base-uncased`: BERT Base Uncased model
@@ -143,6 +172,11 @@ RoBERTa tokens are automatically cleaned to remove the leading 'Ġ' character (w
 ## Integration with Frontend
 
 The backend communicates with the frontend through these API endpoints. The `/attention` endpoint is particularly important for the attention visualization features, including the matrix view, parallel view, and attention distribution bar charts.
+
+The `/attention_comparison` endpoint enables a comparative analysis feature in the frontend, allowing users to see how attention patterns change when a word is replaced. This can be used to:
+- Analyze semantic shifts in the model's understanding
+- Compare attention flows before and after word replacements
+- Visualize how different word choices affect contextual relationships
 
 ## Debugging
 
