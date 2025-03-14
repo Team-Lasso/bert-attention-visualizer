@@ -3,13 +3,15 @@ const os = require('os');
 
 const isWindows = os.platform() === 'win32';
 
+// backend: create virtual environment, install dependencies & watch for changes in backend files
 const backendCommand = isWindows
-  ? "cd backend && python -m venv venv && venv\\Scripts\\pip install -r requirements.txt && venv\\Scripts\\python app.py"
-  : "cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt && venv/bin/python app.py";
+  ? "cd backend && python -m venv venv && venv\\Scripts\\pip install -r requirements.txt && venv\\Scripts\\watchmedo auto-restart --patterns=*.py --recursive -- venv\\Scripts\\python app.py"
+  : "cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt && venv/bin/watchmedo auto-restart --patterns=*.py --recursive -- venv/bin/python app.py";
 
-const frontendCommand = "cd frontend && npm install && npm run dev";
+// frontend: npm install & nodemon to watch for changes in frontend files
+const frontendCommand = "cd frontend && npm install && npx nodemon --watch . --exec \"npm run dev\"";
 
-// concurrently가 반환하는 객체의 result 프로퍼티에 Promise가 들어있습니다.
+// concurrently to run both backend and frontend commands
 const { result } = concurrently([
   { command: backendCommand, name: 'backend', prefixColor: 'blue', shell: true },
   { command: frontendCommand, name: 'frontend', prefixColor: 'green', shell: true }

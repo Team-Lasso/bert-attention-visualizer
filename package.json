@@ -3,11 +3,14 @@
     "concurrently": "^9.1.2"
   },
   "scripts": {
-        "start": "node start.js",
-        "backend:win": "cd backend && python -m venv venv && venv\\Scripts\\pip install -r requirements.txt && venv\\Scripts\\python app.py",
-        "backend:mac": "cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt && venv/bin/python app.py",
-        "frontend": "cd frontend && npm install && npm run dev",
-        "start:win": "concurrently \"npm run backend:win\" \"npm run frontend\"",
-        "start:mac": "concurrently \"npm run backend:mac\" \"npm run frontend\""
-    }
+    "start": "node start.js",
+    "backend:win": "cd backend && python -m venv venv && venv\\Scripts\\pip install -r requirements.txt && venv\\Scripts\\python app.py",
+    "backend:mac": "cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt && venv/bin/python app.py",
+    "frontend": "cd frontend && npm install && npm run dev",
+    "start:win": "concurrently \"npm run backend:win\" \"npm run frontend\"",
+    "start:mac": "concurrently \"npm run backend:mac\" \"npm run frontend\"",
+    "check:backend": "netstat -ano | findstr :8000",
+    "kill:backend": "for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :8000') do taskkill /PID %a /F",
+    "install:deps": "cd backend && python -m venv venv && venv\\Scripts\\pip install -r requirements.txt && cd ../frontend && npm install"
+  }
 }
