@@ -17,6 +17,58 @@ interface AttentionComparisonViewProps {
     onExitComparison: () => void;
 }
 
+// Component to display a sentence with a highlighted word
+interface HighlightedSentenceProps {
+    sentence: string;
+    wordToHighlight: string;
+    highlightIndex?: number;
+    highlightClass?: string;
+}
+
+const HighlightedSentence: React.FC<HighlightedSentenceProps> = ({
+    sentence,
+    wordToHighlight,
+    highlightIndex,
+    highlightClass = "bg-indigo-100 text-indigo-800 px-1 rounded"
+}) => {
+    // If we have a specific index to highlight
+    if (highlightIndex !== undefined && highlightIndex >= 0) {
+        const words = sentence.split(" ");
+        if (highlightIndex < words.length) {
+            return (
+                <div>
+                    {words.map((word, i) => (
+                        <React.Fragment key={i}>
+                            {i > 0 && " "}
+                            <span className={i === highlightIndex ? highlightClass : ""}>
+                                {word}
+                            </span>
+                        </React.Fragment>
+                    ))}
+                </div>
+            );
+        }
+    }
+
+    // Otherwise, try to find and highlight the word
+    if (!wordToHighlight) return <div>{sentence}</div>;
+
+    // Handle case where the word might include punctuation
+    const escapedWord = wordToHighlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedWord})`, 'gi');
+    const parts = sentence.split(regex);
+
+    return (
+        <div>
+            {parts.map((part, i) => (
+                regex.test(part) ?
+                    <span key={i} className={highlightClass}>{part}</span> :
+                    <span key={i}>{part}</span>
+            ))}
+        </div>
+    );
+};
+
 const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
     beforeData,
     afterData,
@@ -45,6 +97,45 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
         ...token,
         index,
     })) || [];
+
+    // Extract complete sentences from tokens
+    const getFullSentence = (tokens: Array<{ text: string }>) => {
+        // Filter out special tokens like [CLS], [SEP], <s>, </s>, etc.
+        const specialTokens = ["[CLS]", "[SEP]", "<s>", "</s>", "<pad>", "[PAD]"];
+        const filteredTokens = tokens.filter(token => !specialTokens.includes(token.text));
+
+        // For RoBERTa, remove 'Ġ' prefix from tokens
+        const processedTokens = filteredTokens.map(token => {
+            let text = token.text;
+            if (text.startsWith('Ġ')) {
+                text = text.substring(1);
+            }
+            return text;
+        });
+
+        // Join tokens, adding spaces where appropriate
+        let sentence = '';
+        processedTokens.forEach((text, i) => {
+            // Don't add space before punctuation or if it's the first token
+            const isPunctuation = /^[.,;:!?'"()[\]{}]+$/.test(text);
+            if (i === 0 || isPunctuation) {
+                sentence += text;
+            } else {
+                sentence += ' ' + text;
+            }
+        });
+
+        return sentence;
+    };
+
+    const originalSentence = useMemo(() => getFullSentence(beforeData?.tokens || []), [beforeData]);
+    const replacedSentence = useMemo(() => getFullSentence(afterData?.tokens || []), [afterData]);
+
+    // Find the original word that was replaced
+    const originalWords = originalSentence.split(' ');
+    const originalWord = wordIndex !== null && wordIndex < originalWords.length
+        ? originalWords[wordIndex]
+        : "";
 
     // Create word attention data for bar charts when a token is selected
     const beforeWordAttentionData: WordAttentionData | null = useMemo(() => {
@@ -96,9 +187,9 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                     <p>
                         Comparing attention before and after replacing{" "}
                         <span className="font-medium text-indigo-700">
-                            {wordIndex !== null && beforeData?.tokens && beforeData.tokens[wordIndex]
+                            {originalWord || (wordIndex !== null && beforeData?.tokens && beforeData.tokens[wordIndex]
                                 ? beforeData.tokens[wordIndex].text
-                                : "the masked word"}
+                                : "the masked word")}
                         </span>{" "}
                         with{" "}
                         <span className="font-medium text-indigo-700">
@@ -118,7 +209,7 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
             </div>
 
             {/* Visualization Views */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Before View */}
                 <div className="bg-white rounded-xl shadow-md p-5 border border-indigo-100">
                     <div className="flex items-center justify-between mb-4">
@@ -137,31 +228,46 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                         </div>
                     </div>
 
-                    {beforeHeadData && (
-                        activeView === "matrix" ? (
-                            <AttentionMatrix
-                                tokens={beforeTokensWithIndex}
-                                head={{
-                                    ...beforeHeadData,
-                                    headIndex: selectedHead,
-                                }}
-                                width={400} // Slightly smaller for side-by-side
-                                height={400}
-                                selectedTokenIndex={selectedTokenIndex}
+                    {/* Display original full sentence with highlighted original word */}
+                    <div className="bg-amber-50 p-3 mb-4 rounded-lg border-l-4 border-amber-400 border-t border-r border-b border-amber-100 shadow-sm">
+                        <div className="font-medium mb-1 text-amber-800">Original Sentence:</div>
+                        <div className="text-base">
+                            <HighlightedSentence
+                                sentence={originalSentence}
+                                wordToHighlight={originalWord}
+                                highlightIndex={wordIndex !== null ? wordIndex : undefined}
+                                highlightClass="bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-medium"
                             />
-                        ) : (
-                            <ParallelView
-                                tokens={beforeTokensWithIndex}
-                                head={{
-                                    ...beforeHeadData,
-                                    headIndex: selectedHead,
-                                }}
-                                width={400} // Slightly smaller for side-by-side
-                                height={400}
-                                selectedTokenIndex={selectedTokenIndex}
-                            />
-                        )
-                    )}
+                        </div>
+                    </div>
+
+                    <div className="flex justify-center">
+                        {beforeHeadData && (
+                            activeView === "matrix" ? (
+                                <AttentionMatrix
+                                    tokens={beforeTokensWithIndex}
+                                    head={{
+                                        ...beforeHeadData,
+                                        headIndex: selectedHead,
+                                    }}
+                                    width={500}
+                                    height={450}
+                                    selectedTokenIndex={selectedTokenIndex}
+                                />
+                            ) : (
+                                <ParallelView
+                                    tokens={beforeTokensWithIndex}
+                                    head={{
+                                        ...beforeHeadData,
+                                        headIndex: selectedHead,
+                                    }}
+                                    width={500}
+                                    height={450}
+                                    selectedTokenIndex={selectedTokenIndex}
+                                />
+                            )
+                        )}
+                    </div>
                 </div>
 
                 {/* After View */}
@@ -182,31 +288,46 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                         </div>
                     </div>
 
-                    {afterHeadData && (
-                        activeView === "matrix" ? (
-                            <AttentionMatrix
-                                tokens={afterTokensWithIndex}
-                                head={{
-                                    ...afterHeadData,
-                                    headIndex: selectedHead,
-                                }}
-                                width={400} // Slightly smaller for side-by-side
-                                height={400}
-                                selectedTokenIndex={selectedTokenIndex}
+                    {/* Display replaced full sentence with highlighted replacement word */}
+                    <div className="bg-green-50 p-3 mb-4 rounded-lg border-l-4 border-green-400 border-t border-r border-b border-green-100 shadow-sm">
+                        <div className="font-medium mb-1 text-green-800">Replaced Sentence:</div>
+                        <div className="text-base">
+                            <HighlightedSentence
+                                sentence={replacedSentence}
+                                wordToHighlight={replacementWord || ""}
+                                highlightIndex={wordIndex !== null ? wordIndex : undefined}
+                                highlightClass="bg-green-200 text-green-900 px-1.5 py-0.5 rounded font-medium"
                             />
-                        ) : (
-                            <ParallelView
-                                tokens={afterTokensWithIndex}
-                                head={{
-                                    ...afterHeadData,
-                                    headIndex: selectedHead,
-                                }}
-                                width={400} // Slightly smaller for side-by-side
-                                height={400}
-                                selectedTokenIndex={selectedTokenIndex}
-                            />
-                        )
-                    )}
+                        </div>
+                    </div>
+
+                    <div className="flex justify-center">
+                        {afterHeadData && (
+                            activeView === "matrix" ? (
+                                <AttentionMatrix
+                                    tokens={afterTokensWithIndex}
+                                    head={{
+                                        ...afterHeadData,
+                                        headIndex: selectedHead,
+                                    }}
+                                    width={500}
+                                    height={450}
+                                    selectedTokenIndex={selectedTokenIndex}
+                                />
+                            ) : (
+                                <ParallelView
+                                    tokens={afterTokensWithIndex}
+                                    head={{
+                                        ...afterHeadData,
+                                        headIndex: selectedHead,
+                                    }}
+                                    width={500}
+                                    height={450}
+                                    selectedTokenIndex={selectedTokenIndex}
+                                />
+                            )
+                        )}
+                    </div>
                 </div>
             </div>
 
