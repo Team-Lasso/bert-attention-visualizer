@@ -2,7 +2,7 @@ name: Deploy Frontend to Vercel
 
 on:
   push:
-    branches: [anten]
+    branches: [main, testing]
     paths:
       - 'frontend/**'
   workflow_dispatch:
