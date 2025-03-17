@@ -12,6 +12,7 @@ const isProduction = import.meta.env.PROD;
 export function getApiUrl(endpoint: string): string {
     if (isProduction) {
         // In production, use the full URL to the Hugging Face Space
+        // IMPORTANT: Do NOT add /api prefix when using HF Spaces
         return `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
     } else {
         // In development, use the local proxy
@@ -27,6 +28,8 @@ export async function fetchApi<T>(
     options?: RequestInit
 ): Promise<T> {
     const url = getApiUrl(endpoint);
+    console.log('Fetching from:', url); // Add this log for debugging
+
     const response = await fetch(url, {
         ...options,
         headers: {
@@ -36,7 +39,7 @@ export async function fetchApi<T>(
     });
 
     if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to get ${endpoint.split('/').pop()} data: ${response.status}`);
     }
 
     return response.json();

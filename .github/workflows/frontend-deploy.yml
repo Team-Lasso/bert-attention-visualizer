@@ -28,6 +28,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
+      - name: Debug environment variables
+        run: |
+          echo "HUGGINGFACE_SPACE_URL: ${{ secrets.HUGGINGFACE_SPACE_URL }}"
+          echo "Content of .env.production:"
+          cat .env.production
+      
       - name: Build project
         run: npm run build
         env:
