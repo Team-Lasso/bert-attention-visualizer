@@ -1,3 +1,16 @@
+---
+title: BERT Attention Visualizer API
+emoji: 🧠
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+sdk_version: "3.9"
+app_file: app.py
+pinned: false
+---
+
+Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
+
 # BERT Attention Visualizer API
 
 This is the backend API for the BERT Attention Visualizer, a tool that allows you to visualize attention patterns in BERT and RoBERTa models.
