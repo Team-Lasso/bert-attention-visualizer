@@ -6,6 +6,10 @@ WORKDIR /code
 COPY ./requirements.txt /code/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
+# Download NLTK data during build
+RUN python -m nltk.downloader punkt averaged_perceptron_tagger stopwords
+RUN mkdir -p /usr/local/share/nltk_data && chmod -R 777 /usr/local/share/nltk_data
+
 # Copy all files from backend to the root of the container
 COPY . /code/
 
