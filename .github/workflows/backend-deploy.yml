@@ -1,0 +1,44 @@
+name: Deploy Backend to Hugging Face Spaces
+
+on:
+  push:
+    branches: [anten]
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          lfs: true
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+          cache-dependency-path: './backend/requirements.txt'
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+      
+      - name: Run tests
+        run: |
+          cd backend
+          python -m pytest test_api.py -v
+      
+      - name: Deploy to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+          HF_SPACE_ID: ${{ secrets.HUGGINGFACE_SPACE_ID }}
+        run: |
+          cd backend
+          pip install huggingface_hub
+          python -c "from huggingface_hub import HfApi; api = HfApi(); api.upload_folder(folder_path='.', repo_id='$HF_SPACE_ID', repo_type='space', token='$HF_TOKEN')" 

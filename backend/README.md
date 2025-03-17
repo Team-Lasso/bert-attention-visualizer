@@ -1,3 +1,32 @@
+# BERT Attention Visualizer API
+
+This is the backend API for the BERT Attention Visualizer, a tool that allows you to visualize attention patterns in BERT and RoBERTa models.
+
+## API Endpoints
+
+- `GET /models` - Get available models
+- `POST /tokenize` - Tokenize text
+- `POST /predict_masked` - Predict masked tokens
+- `POST /attention` - Get attention matrices
+- `POST /attention_comparison` - Compare attention before and after word replacement
+
+## Frontend
+
+The frontend for this application is deployed on Vercel. Visit the live demo at: [BERT Attention Visualizer](https://your-vercel-app-url.vercel.app)
+
+## Local Development
+
+To run this API locally:
+
+```bash
+pip install -r requirements.txt
+uvicorn app:app --reload
+```
+
+## About
+
+This API powers the BERT Attention Visualizer, which helps researchers and practitioners understand how transformer models like BERT attend to different tokens and how attention patterns change with different inputs.
+
 # todo:
  1. ~~word replacement UI & it's back end~~ ✓ (Implemented via `/attention_comparison` endpoint)
  2. extened the attetion page when it have more word.

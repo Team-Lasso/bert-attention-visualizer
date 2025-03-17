@@ -1,78 +1,80 @@
 # BERT Attention Visualizer
 
-A visual tool for exploring attention patterns in transformer-based language models like BERT and RoBERTa. The application allows you to:
-
-- Visualize attention patterns across different layers and attention heads
-- Mask tokens and see the model's predictions
-- Compare attention patterns across different models
+A tool for visualizing attention patterns in BERT and RoBERTa models.
 
 ## Project Structure
 
-This project is composed of two main parts:
+- `frontend/`: React application with Vite for the UI
+- `backend/`: FastAPI Python service for model processing
 
-- `frontend/`: React-based UI for visualizing attention patterns
-- `backend/`: FastAPI service that handles model inference using PyTorch and Hugging Face Transformers
+## CI/CD with GitHub Actions
 
-## Setup Instructions
+This project uses GitHub Actions for automated deployment:
+- Frontend is deployed to Vercel
+- Backend is deployed to Hugging Face Spaces
 
-### Prerequisites
+### Setup Instructions
 
-- Node.js 16+ and npm for the frontend
-- Python 3.8+ for the backend
-- Git (for cloning the repository)
+#### 1. Fork this repository
 
-### Backend Setup
+#### 2. Configure GitHub Secrets
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
+Add the following secrets to your GitHub repository:
 
-2. Create a virtual environment (recommended):
-   ```bash
-   python -m venv venv
-   ```
+For frontend deployment:
+- `VERCEL_TOKEN`: Your Vercel API token
+- `VERCEL_ORG_ID`: Your Vercel organization ID
+- `VERCEL_PROJECT_ID`: Your Vercel project ID
+- `HUGGINGFACE_SPACE_URL`: The URL of your Hugging Face Space (e.g., https://your-username-bert-visualizer.hf.space)
 
-3. Activate the virtual environment:
-   - Windows:
-     ```bash
-     venv\Scripts\activate
-     ```
-   - MacOS/Linux:
-     ```bash
-     source venv/bin/activate
-     ```
+For backend deployment:
+- `HUGGINGFACE_TOKEN`: Your Hugging Face API token
+- `HUGGINGFACE_SPACE_ID`: Your Hugging Face Space ID (e.g., username/space-name)
 
-4. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+#### 3. Setup Vercel Project
 
-5. Start the backend server:
-   ```bash
-   python start_server.py
-   ```
+1. Install Vercel CLI: `npm i -g vercel`
+2. Navigate to the frontend directory: `cd frontend`
+3. Link to Vercel: `vercel link`
+4. Get your Vercel project ID and org ID from the generated `.vercel/project.json` file
 
-   The backend will be available at `http://localhost:8000`.
+#### 4. Setup Hugging Face Space
 
-### Frontend Setup
+1. Create a new Space on Hugging Face: https://huggingface.co/spaces/new
+2. Choose "Docker" Space type
+3. Note your Space ID (username/space-name)
+4. Get your Hugging Face token from: https://huggingface.co/settings/tokens
 
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
+#### 5. Trigger Deployments
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+The deployments will be triggered automatically when you push changes to the main branch:
+- Changes in the `frontend/` directory will trigger the frontend workflow
+- Changes in the `backend/` directory will trigger the backend workflow
 
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
+You can also trigger deployments manually from the "Actions" tab in GitHub.
 
-   The frontend will be available at `http://localhost:5173`.
+## Local Development
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app:app --reload
+```
+
+## Connecting Backend and Frontend
+
+- In development: The frontend connects to the backend using a proxy configured in `vite.config.ts`
+- In production: The frontend connects to the backend using the URL specified in the `VITE_API_URL` environment variable, which is set during the GitHub Actions workflow
 
 ## Usage
 
