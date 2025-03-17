@@ -28,6 +28,15 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
+          pip install huggingface_hub
+      
+      - name: Verify backend files
+        run: |
+          cd backend
+          ls -la
+          cat README.md | head -15
+          echo "Dockerfile contents:"
+          cat Dockerfile
       
       - name: Deploy to Hugging Face Space
         env:
@@ -35,5 +44,4 @@ jobs:
           HF_SPACE_ID: ${{ secrets.HUGGINGFACE_SPACE_ID }}
         run: |
           cd backend
-          pip install huggingface_hub
           python -c "from huggingface_hub import HfApi; api = HfApi(); api.upload_folder(folder_path='.', repo_id='$HF_SPACE_ID', repo_type='space', token='$HF_TOKEN')" 

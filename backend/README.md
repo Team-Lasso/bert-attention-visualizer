@@ -5,8 +5,10 @@ colorFrom: blue
 colorTo: indigo
 sdk: docker
 sdk_version: "3.9"
-app_file: app.py
+app_file: app_hf.py
+app_port: 7860
 pinned: false
+license: mit
 ---
 
 Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
