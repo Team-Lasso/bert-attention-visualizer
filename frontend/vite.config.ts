@@ -17,4 +17,8 @@ export default defineConfig({
       },
     },
   },
+  define: {
+    // Define environment variables to be used in frontend
+    'process.env.API_URL': JSON.stringify(process.env.API_URL || 'http://localhost:8000'),
+  },
 });
