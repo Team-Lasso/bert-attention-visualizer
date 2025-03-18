@@ -1,8 +1,11 @@
 import { ModelConfig, Token, WordPrediction, AttentionData } from '../utils/interfaces';
 import pretrainedModels from '../data/pretrainedModels';
+import { getApiUrl } from '../utils/api';
 
-// Update URL to use the proxy configured in vite.config.ts
-const API_URL = '/api';
+// Use the API utils to get the correct URL based on environment
+const getEndpointUrl = (endpoint: string): string => {
+  return getApiUrl(endpoint);
+};
 
 /**
  * Normalize prediction scores to proper probability values (0-1 range)
@@ -53,7 +56,7 @@ const normalizePredictionScores = (predictions: WordPrediction[]): WordPredictio
  */
 export const fetchAvailableModels = async (): Promise<ModelConfig[]> => {
   try {
-    const response = await fetch(`${API_URL}/models`);
+    const response = await fetch(`${getEndpointUrl('models')}`);
     if (!response.ok) {
       console.warn('Failed to fetch models from backend, using predefined models');
       // Filter to only include the models likely supported by backend
@@ -103,7 +106,7 @@ export const fetchAvailableModels = async (): Promise<ModelConfig[]> => {
 export const tokenizeText = async (text: string, modelName: string): Promise<Token[]> => {
   try {
     // Properly handle punctuation by letting the backend tokenizer handle it
-    const response = await fetch(`${API_URL}/tokenize`, {
+    const response = await fetch(`${getEndpointUrl('tokenize')}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -192,7 +195,7 @@ export const getMaskedPredictions = async (
       headers['X-Explicit-Masked-Text'] = explicitMaskedText;
     }
 
-    const response = await fetch(`${API_URL}/predict_masked`, {
+    const response = await fetch(`${getEndpointUrl('predict_masked')}`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -235,7 +238,7 @@ export const getAttentionData = async (text: string, modelName: string): Promise
   try {
     console.log(`Fetching attention data for: "${text}" with model: ${modelName}`);
 
-    const response = await fetch(`${API_URL}/attention`, {
+    const response = await fetch(`${getEndpointUrl('attention')}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -321,7 +324,7 @@ export const getAttentionComparison = async (
       console.warn(`Masked index ${maskedIndex} was out of range, adjusted to ${safeIndex}`);
     }
 
-    const response = await fetch(`${API_URL}/attention_comparison`, {
+    const response = await fetch(`${getEndpointUrl('attention_comparison')}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

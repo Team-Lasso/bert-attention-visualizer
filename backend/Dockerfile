@@ -2,20 +2,24 @@ FROM python:3.9-slim
 
 WORKDIR /code
 
+# Create a directory for model cache with appropriate permissions
+RUN mkdir -p /code/model_cache && chmod -R 777 /code/model_cache
+
+# Set environment variables for model caching
+ENV HF_HOME=/code/model_cache
+ENV TRANSFORMERS_CACHE=/code/model_cache
+ENV HUGGINGFACE_HUB_CACHE=/code/model_cache
+
 # Copy requirements and install
 COPY ./requirements.txt /code/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
+# Download NLTK data during build
+RUN python -m nltk.downloader punkt averaged_perceptron_tagger stopwords
+RUN mkdir -p /usr/local/share/nltk_data && chmod -R 777 /usr/local/share/nltk_data
+
 # Copy all files from backend to the root of the container
 COPY . /code/
-
-# Create an entry point script at the root
-RUN echo 'from app import app' >/code/app_hf.py &&
-    echo 'import uvicorn' >>/code/app_hf.py &&
-    echo 'import os' >>/code/app_hf.py &&
-    echo 'if __name__ == "__main__":' >>/code/app_hf.py &&
-    echo '    port = int(os.environ.get("PORT", 7860))' >>/code/app_hf.py &&
-    echo '    uvicorn.run(app, host="0.0.0.0", port=port)' >>/code/app_hf.py
 
 # List files to verify
 RUN ls -la /code/
