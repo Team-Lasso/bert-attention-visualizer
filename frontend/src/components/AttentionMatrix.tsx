@@ -96,32 +96,78 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
   selectedTokenIndex
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || !containerRef.current) return;
 
+    const container = containerRef.current;
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    // Log tokens to see what we're displaying
-    console.log("Tokens to display:", tokens.map(t => ({
-      text: t.text,
-      index: t.index
-    })));
-    console.log("Total tokens:", tokens.length);
+    // IMPORTANT: Check if we have a mismatch between tokens and attention matrix size
+    // This could happen if the backend includes special tokens that aren't shown in the UI
+    const matrixSize = head.attention[0]?.length || 0;
 
-    // Check if we have more tokens than are displayed in the heatmap
-    const firstRowValues = head.attention[0];
-    if (firstRowValues.length !== tokens.length) {
-      console.warn(`Attention matrix size mismatch: first row has ${firstRowValues.length} values but we have ${tokens.length} tokens`);
+    if (matrixSize !== tokens.length) {
+      console.warn(`Attention matrix size mismatch: matrix has ${matrixSize} values but we have ${tokens.length} tokens`);
     }
 
-    const margin = { top: 50, right: 20, bottom: 50, left: 50 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+    // Calculate base dimensions
+    const providedWidth = width;
+    const providedHeight = height;
+
+    // Dynamically calculate matrix dimensions based on token count
+    const tokenCount = tokens.length;
+
+    // Calculate scaling factor - reduce size as token count increases
+    const optimalTokensForFullSize = 10; // Number of tokens at which we use full size
+    const tokenCountFactor = tokenCount <= optimalTokensForFullSize ? 1 :
+      (Math.log10(tokenCount) / Math.log10(50));
+    const scaleFactor = Math.max(0.5, 1 - (tokenCountFactor * 0.5));
+
+    // Adjust margin based on token count and size
+    const baseMargin = { top: 50, right: 20, bottom: 50, left: 50 };
+    // For larger token counts, we need more space for labels
+    const margin = {
+      top: baseMargin.top,
+      right: baseMargin.right + (tokenCount > optimalTokensForFullSize ? 20 : 0),
+      bottom: baseMargin.bottom + (tokenCount > optimalTokensForFullSize ? 20 : 0),
+      left: baseMargin.left + (tokenCount > optimalTokensForFullSize ? 20 : 0)
+    };
+
+    // Determine if we need a larger matrix for many tokens
+    // For many tokens, expand the matrix size but limit to some reasonable maximum
+    const maxWidth = Math.min(1200, window.innerWidth * 0.95); // Maximum reasonable width
+    const maxHeight = window.innerHeight * 0.8; // Maximum reasonable height
+
+    // Calculate the dimensions needed for the visualization
+    const calculatedWidth = Math.min(maxWidth, Math.max(providedWidth, tokenCount * 40 * scaleFactor));
+    const calculatedHeight = Math.min(maxHeight, Math.max(providedHeight, tokenCount * 40 * scaleFactor));
+
+    // Set the dimensions of the SVG
+    svg.attr("width", calculatedWidth)
+      .attr("height", calculatedHeight);
+
+    // Set container dimensions to match
+    container.style.width = `${calculatedWidth}px`;
+    container.style.height = `${calculatedHeight}px`;
+
+    const innerWidth = calculatedWidth - margin.left - margin.right;
+    const innerHeight = calculatedHeight - margin.top - margin.bottom;
 
     // Normalize the attention matrix so each row sums to 100%
     const normalizedAttention = normalizeAttentionValues(head.attention);
+
+    // Function to safely access attention values, preventing out-of-bounds errors
+    const getSafeAttentionValue = (sourceIdx: number, targetIdx: number): number => {
+      if (sourceIdx < normalizedAttention.length &&
+        normalizedAttention[sourceIdx] &&
+        targetIdx < normalizedAttention[sourceIdx].length) {
+        return normalizedAttention[sourceIdx][targetIdx];
+      }
+      return 0; // Default to 0 for out-of-bounds indices
+    };
 
     // Verify rows sum to 100% (approximately 1.0)
     const rowSums = normalizedAttention.map(row =>
@@ -137,25 +183,32 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
       console.log("Normalized first row:", normalizedAttention[0].map(v => (v * 100).toFixed(0) + "%"));
     }
 
-    // IMPORTANT: Check if we have a mismatch between tokens and attention matrix size
-    // This could happen if the backend includes special tokens that aren't shown in the UI
-    const matrixSize = normalizedAttention[0]?.length || 0;
-    const visibleTokenCount = Math.min(tokens.length, matrixSize);
-
-    if (matrixSize !== tokens.length) {
-      console.warn(`Size mismatch: Attention matrix has ${matrixSize} columns but there are ${tokens.length} tokens. Using ${visibleTokenCount} tokens for visualization.`);
-      // We'll use only the visible tokens for rendering, but this could affect accuracy
-    }
-
-    // Calculate cell size based on visible token count
+    // Calculate cell size based on available space and token count
     const cellSize = Math.min(
-      innerWidth / visibleTokenCount,
-      innerHeight / visibleTokenCount
+      innerWidth / tokenCount,
+      innerHeight / tokenCount
     );
 
+    // Create main visualization group
     const g = svg
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Enhanced color palette for token highlighting, matching other components
+    const tokenColorPalette = [
+      // Blue shades
+      '#3498db', '#2980b9', '#1a5276', '#5dade2', '#85c1e9',
+      // Red/orange shades
+      '#e74c3c', '#c0392b', '#d35400', '#f39c12', '#f5b041',
+      // Green shades
+      '#2ecc71', '#27ae60', '#229954', '#58d68d', '#a9dfbf',
+      // Purple shades
+      '#9b59b6', '#8e44ad', '#6c3483', '#bb8fce', '#d2b4de',
+      // Teal/turquoise
+      '#1abc9c', '#16a085', '#117a65', '#76d7c4', '#a3e4d7',
+      // Additional colors
+      '#34495e', '#7f8c8d', '#f1c40f', '#28b463', '#dc7633'
+    ];
 
     // Color scale for attention weights - using a more vibrant blue gradient
     const colorScale = d3.scaleSequential(d3.interpolateBlues)
@@ -171,11 +224,17 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
       .attr("rx", 8)
       .attr("ry", 8);
 
+    // Calculate font size based on cell size
+    const fontSize = Math.min(10, Math.max(6, cellSize / 3));
+    const labelFontSize = Math.min(12, Math.max(8, 12 * scaleFactor));
+
     // Create the heatmap cells with animation
-    for (let i = 0; i < visibleTokenCount; i++) {
+    for (let i = 0; i < tokenCount; i++) {
       const sourceToken = tokens[i];
       // Pre-calculate all percentages for this row to ensure they sum to 100%
-      const visibleRowValues = normalizedAttention[i].slice(0, visibleTokenCount);
+      // Safely get row values, avoiding out-of-bounds issues
+      const visibleRowValues = Array(tokenCount).fill(0).map((_, j) => getSafeAttentionValue(i, j));
+
       // Re-normalize the visible row to ensure it sums to 1.0
       const sum = visibleRowValues.reduce((acc, val) => acc + val, 0);
       const normalizedVisibleRow = sum > 0
@@ -184,28 +243,13 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
 
       const rowPercentages = formatPercentagesWithCorrectSum(normalizedVisibleRow);
 
-      for (let j = 0; j < visibleTokenCount; j++) {
+      for (let j = 0; j < tokenCount; j++) {
         const targetToken = tokens[j];
         // Use the pre-calculated percentage that ensures row sums to 100%
         const percentage = rowPercentages[j];
 
-        // Determine if cell should be highlighted based on selection
-        const isHighlighted =
-          selectedTokenIndex === i || // Row highlighted
-          selectedTokenIndex === j;    // Column highlighted
-
-        // Calculate enhanced color based on selection
+        // Calculate cell color - use the standard color scale for all cells
         let cellColor = colorScale(normalizedAttention[i][j]);
-        if (selectedTokenIndex === i && selectedTokenIndex === j) {
-          // Self-attention of selected token
-          cellColor = '#ef4444'; // Red for self-attention of selected token
-        } else if (selectedTokenIndex === i) {
-          // From selected token to others - use orange/amber
-          cellColor = d3.interpolateRgb('#f97316', '#0ea5e9')(normalizedAttention[i][j]);
-        } else if (selectedTokenIndex === j) {
-          // From others to selected token - use green
-          cellColor = d3.interpolateRgb('#10b981', '#0ea5e9')(normalizedAttention[i][j]);
-        }
 
         // Add cell with transition
         const cell = g.append("rect")
@@ -214,8 +258,8 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
           .attr("width", cellSize)
           .attr("height", cellSize)
           .attr("fill", "#f8fafc") // Start with light color
-          .attr("stroke", isHighlighted ? "#3b82f6" : "#fff")
-          .attr("stroke-width", isHighlighted ? 2 : 1)
+          .attr("stroke", "#fff")
+          .attr("stroke-width", 1)
           .attr("rx", 2)
           .attr("ry", 2)
           .attr("class", "matrix-cell")
@@ -233,36 +277,33 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
         cell.append("title")
           .text(`${sourceToken.text} → ${targetToken.text}: ${percentage}`);
 
-        // Add percentage text for all cells where there's enough space
-        if (cellSize > 20) {
-          // Determine font size based on cell size
-          const fontSize = Math.min(10, cellSize / 3);
+        // Add percentage text for all cells, adapting size for readability
+        // Remove the condition that was hiding text in small cells
+        const textOpacity = Math.max(0.7, normalizedAttention[i][j] * 2);
 
-          // Determine opacity based on value to slightly fade very low values
-          // but still keep them visible (minimum 0.7 opacity)
-          const textOpacity = Math.max(0.7, normalizedAttention[i][j] * 2);
+        // Dynamically adjust font size based on cell size for very small cells
+        const dynamicFontSize = Math.min(fontSize, Math.max(5, cellSize / 3.5));
 
-          // Create percentage text with improved readability
-          const textElement = g.append("text")
-            .attr("x", j * cellSize + cellSize / 2)
-            .attr("y", i * cellSize + cellSize / 2)
-            .attr("text-anchor", "middle")
-            .attr("dominant-baseline", "middle")
-            .attr("font-size", `${fontSize}px`)
-            .attr("font-weight", "bold")
-            .attr("fill", normalizedAttention[i][j] > 0.5 ? "white" : "black")
-            .attr("stroke", normalizedAttention[i][j] > 0.5 ? "none" : "white") // Add stroke for better contrast
-            .attr("stroke-width", "0.5px")
-            .attr("paint-order", "stroke") // Make the stroke appear behind the text
-            .attr("opacity", 0) // Start invisible
-            .text(percentage);
+        // Create percentage text with improved readability
+        const textElement = g.append("text")
+          .attr("x", j * cellSize + cellSize / 2)
+          .attr("y", i * cellSize + cellSize / 2)
+          .attr("text-anchor", "middle")
+          .attr("dominant-baseline", "middle")
+          .attr("font-size", `${dynamicFontSize}px`)
+          .attr("font-weight", "bold")
+          .attr("fill", normalizedAttention[i][j] > 0.5 ? "white" : "black")
+          .attr("stroke", normalizedAttention[i][j] > 0.5 ? "none" : "white") // Add stroke for better contrast
+          .attr("stroke-width", "0.5px")
+          .attr("paint-order", "stroke") // Make the stroke appear behind the text
+          .attr("opacity", 0) // Start invisible
+          .text(cellSize < 10 ? rowPercentages[j].replace('%', '') : percentage); // Remove % sign for very small cells
 
-          // Animate appearance
-          textElement.transition()
-            .duration(500)
-            .delay(i * 20 + j * 20 + 300) // Appear after cell coloring
-            .attr("opacity", textOpacity);
-        }
+        // Animate appearance
+        textElement.transition()
+          .duration(500)
+          .delay(i * 20 + j * 20 + 300) // Appear after cell coloring
+          .attr("opacity", textOpacity);
 
         // Add click event to cells
         cell.on("click", () => {
@@ -278,20 +319,42 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
       }
     }
 
+    // Handle label display based on token count
+    // For large token counts, we need to be selective about which labels to show
+    const maxVisibleLabels = Math.floor(innerWidth / 60); // Approximate number of labels that can fit
+    const skipLabels = tokenCount > maxVisibleLabels ?
+      Math.ceil(tokenCount / maxVisibleLabels) : 1;
+
     // Add x-axis labels (target tokens) with better styling and highlight
     const xLabels = g.selectAll(".x-label")
-      .data(tokens.slice(0, visibleTokenCount))
+      .data(tokens)
       .enter()
       .append("text")
       .attr("class", "x-label")
       .attr("x", (d, i) => i * cellSize + cellSize / 2)
       .attr("y", -10)
       .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
+      .attr("font-size", `${labelFontSize}px`)
       .attr("fill", (d, i) => i === selectedTokenIndex ? "#3b82f6" : "#475569")
       .attr("font-weight", (d, i) => i === selectedTokenIndex ? "bold" : "normal")
-      .text(d => d.text)
-      .style("cursor", "pointer");
+      .text((d, i) => skipLabels > 1 && i % skipLabels !== 0 && i !== selectedTokenIndex ? '' : d.text)
+      .style("cursor", "pointer")
+      // Truncate long token texts
+      .each(function () {
+        const textElement = d3.select(this);
+        let textLength = (textElement.node() as SVGTextElement).getComputedTextLength();
+        let text = textElement.text();
+        const maxWidth = cellSize * 1.5;
+
+        if (textLength > maxWidth && text.length > 3) {
+          // Truncate text and add ellipsis if it's too long
+          while (textLength > maxWidth && text.length > 3) {
+            text = text.slice(0, -1);
+            textElement.text(text + '...');
+            textLength = (textElement.node() as SVGTextElement).getComputedTextLength();
+          }
+        }
+      });
 
     // Add click event to x-axis labels
     xLabels.on("click", function (this: SVGTextElement, _event: Event, d: Token) {
@@ -304,7 +367,7 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
 
     // Add y-axis labels (source tokens) with better styling and highlight
     const yLabels = g.selectAll(".y-label")
-      .data(tokens.slice(0, visibleTokenCount))
+      .data(tokens)
       .enter()
       .append("text")
       .attr("class", "y-label")
@@ -312,11 +375,27 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
       .attr("y", (d, i) => i * cellSize + cellSize / 2)
       .attr("text-anchor", "end")
       .attr("dominant-baseline", "middle")
-      .attr("font-size", "12px")
+      .attr("font-size", `${labelFontSize}px`)
       .attr("fill", (d, i) => i === selectedTokenIndex ? "#3b82f6" : "#475569")
       .attr("font-weight", (d, i) => i === selectedTokenIndex ? "bold" : "normal")
-      .text(d => d.text)
-      .style("cursor", "pointer");
+      .text((d, i) => skipLabels > 1 && i % skipLabels !== 0 && i !== selectedTokenIndex ? '' : d.text)
+      .style("cursor", "pointer")
+      // Truncate long token texts
+      .each(function () {
+        const textElement = d3.select(this);
+        let textLength = (textElement.node() as SVGTextElement).getComputedTextLength();
+        let text = textElement.text();
+        const maxWidth = margin.left - 15;
+
+        if (textLength > maxWidth && text.length > 3) {
+          // Truncate text and add ellipsis if it's too long
+          while (textLength > maxWidth && text.length > 3) {
+            text = text.slice(0, -1);
+            textElement.text(text + '...');
+            textLength = (textElement.node() as SVGTextElement).getComputedTextLength();
+          }
+        }
+      });
 
     // Add click event to y-axis labels
     yLabels.on("click", function (this: SVGTextElement, _event: Event, d: Token) {
@@ -327,30 +406,9 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
       window.dispatchEvent(selectionEvent);
     });
 
-    // Add highlighting rectangles for selected token
-    if (selectedTokenIndex !== null && selectedTokenIndex < visibleTokenCount) {
-      // Highlight row
-      g.append("rect")
-        .attr("x", -5)
-        .attr("y", selectedTokenIndex * cellSize)
-        .attr("width", visibleTokenCount * cellSize + 5)
-        .attr("height", cellSize)
-        .attr("fill", "rgba(59, 130, 246, 0.1)")
-        .attr("stroke", "none");
-
-      // Highlight column
-      g.append("rect")
-        .attr("x", selectedTokenIndex * cellSize)
-        .attr("y", -5)
-        .attr("width", cellSize)
-        .attr("height", visibleTokenCount * cellSize + 5)
-        .attr("fill", "rgba(59, 130, 246, 0.1)")
-        .attr("stroke", "none");
-    }
-
     // Add title with better styling
     svg.append("text")
-      .attr("x", width / 2)
+      .attr("x", calculatedWidth / 2)
       .attr("y", 20)
       .attr("text-anchor", "middle")
       .attr("font-size", "14px")
@@ -360,8 +418,8 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
 
     // Add axis titles
     svg.append("text")
-      .attr("x", width / 2)
-      .attr("y", height - 10)
+      .attr("x", calculatedWidth / 2)
+      .attr("y", calculatedHeight - 10)
       .attr("text-anchor", "middle")
       .attr("font-size", "12px")
       .attr("fill", "#64748b")
@@ -369,7 +427,7 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
 
     svg.append("text")
       .attr("transform", "rotate(-90)")
-      .attr("x", -height / 2)
+      .attr("x", -calculatedHeight / 2)
       .attr("y", 15)
       .attr("text-anchor", "middle")
       .attr("font-size", "12px")
@@ -379,8 +437,8 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
     // Add instructions when no token is selected
     if (selectedTokenIndex === null) {
       svg.append("text")
-        .attr("x", width / 2)
-        .attr("y", height - 30)
+        .attr("x", calculatedWidth / 2)
+        .attr("y", calculatedHeight - 30)
         .attr("text-anchor", "middle")
         .attr("font-size", "12px")
         .attr("fill", "#64748b")
@@ -388,8 +446,8 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
     } else {
       // Show selected token info
       svg.append("text")
-        .attr("x", width / 2)
-        .attr("y", height - 30)
+        .attr("x", calculatedWidth / 2)
+        .attr("y", calculatedHeight - 30)
         .attr("text-anchor", "middle")
         .attr("font-size", "12px")
         .attr("fill", "#3b82f6")
@@ -397,10 +455,18 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
         .text(`Selected: "${tokens[selectedTokenIndex].text}"`);
     }
 
+    // Add token count indicator when many tokens are present
+    if (tokenCount > 10) {
+      const tokenCountInfo = document.createElement('div');
+      tokenCountInfo.className = 'absolute top-2 right-2 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs';
+      tokenCountInfo.textContent = `${tokenCount} tokens`;
+      container.appendChild(tokenCountInfo);
+    }
+
     // Add color legend
-    const legendWidth = 200;
+    const legendWidth = Math.min(200, calculatedWidth * 0.3);
     const legendHeight = 15;
-    const legendX = width - margin.right - legendWidth;
+    const legendX = calculatedWidth - margin.right - legendWidth;
     const legendY = 15;
 
     // Create gradient for legend
@@ -447,66 +513,13 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
       .attr("fill", "#64748b")
       .text("High Attention");
 
-    // If selected token, add legend for color scheme
-    if (selectedTokenIndex !== null) {
-      // Add special color legend for selection
-      const selLegendY = legendY + 30;
-
-      // Row selection - from selected to others
-      svg.append("rect")
-        .attr("x", legendX)
-        .attr("y", selLegendY)
-        .attr("width", 12)
-        .attr("height", 12)
-        .attr("fill", d3.interpolateRgb('#f97316', '#0ea5e9')(0.7))
-        .attr("rx", 2);
-
-      svg.append("text")
-        .attr("x", legendX + 20)
-        .attr("y", selLegendY + 10)
-        .attr("alignment-baseline", "middle")
-        .attr("font-size", "10px")
-        .attr("fill", "#64748b")
-        .text(`From "${tokens[selectedTokenIndex].text}" to other tokens`);
-
-      // Column selection - from others to selected
-      svg.append("rect")
-        .attr("x", legendX)
-        .attr("y", selLegendY + 20)
-        .attr("width", 12)
-        .attr("height", 12)
-        .attr("fill", d3.interpolateRgb('#10b981', '#0ea5e9')(0.7))
-        .attr("rx", 2);
-
-      svg.append("text")
-        .attr("x", legendX + 20)
-        .attr("y", selLegendY + 30)
-        .attr("alignment-baseline", "middle")
-        .attr("font-size", "10px")
-        .attr("fill", "#64748b")
-        .text(`From other tokens to "${tokens[selectedTokenIndex].text}"`);
-
-      // Self-attention
-      svg.append("rect")
-        .attr("x", legendX)
-        .attr("y", selLegendY + 40)
-        .attr("width", 12)
-        .attr("height", 12)
-        .attr("fill", "#ef4444")
-        .attr("rx", 2);
-
-      svg.append("text")
-        .attr("x", legendX + 20)
-        .attr("y", selLegendY + 50)
-        .attr("alignment-baseline", "middle")
-        .attr("font-size", "10px")
-        .attr("fill", "#64748b")
-        .text(`Self-attention of "${tokens[selectedTokenIndex].text}"`);
-    }
-
   }, [tokens, head, width, height, selectedTokenIndex]);
 
-  return <svg ref={svgRef} width={width} height={height} className="mx-auto" />;
+  return (
+    <div ref={containerRef} className="relative">
+      <svg ref={svgRef} className="mx-auto" />
+    </div>
+  );
 };
 
 export default AttentionMatrix;

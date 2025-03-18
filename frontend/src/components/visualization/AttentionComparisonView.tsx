@@ -117,35 +117,21 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
 
     return (
         <div className="flex flex-col space-y-6">
-            {/* Header with comparison info */}
+            {/* Header with comparison info and back button */}
             <div className="bg-white rounded-xl shadow-md p-5 border border-indigo-100">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-                        Attention Comparison
-                    </h2>
+                <div className="flex justify-between items-center mb-4">
+                    <div className="text-lg font-semibold text-gray-800 flex items-center">
+                        <span className="text-indigo-600 mr-2">Attention Comparison</span>
+                    </div>
                     <button
+                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm transition-colors flex items-center"
                         onClick={onExitComparison}
-                        className="flex items-center text-indigo-600 hover:text-indigo-800"
                     >
-                        <ArrowLeft size={16} className="mr-1" />
-                        Back to Single View
+                        <ArrowLeft size={18} className="mr-2" />
+                        Back to Regular View
                     </button>
                 </div>
-                <div className="text-sm text-gray-600 mb-4">
-                    <p>
-                        Comparing attention before and after replacing{" "}
-                        <span className="font-medium text-indigo-700">
-                            {originalWord || (wordIndex !== null && beforeData?.tokens && beforeData.tokens[wordIndex]
-                                ? beforeData.tokens[wordIndex].text
-                                : "the masked word")}
-                        </span>{" "}
-                        with{" "}
-                        <span className="font-medium text-indigo-700">
-                            {replacementWord || "selected prediction"}
-                        </span>
-                        .
-                    </p>
-                </div>
+
                 <div className="flex justify-between px-4">
                     <div className="text-center">
                         <h3 className="font-medium text-gray-700">Before</h3>
@@ -156,10 +142,10 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                 </div>
             </div>
 
-            {/* Visualization Views */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Visualization Views - Changed from grid to flex column for more space */}
+            <div className="flex flex-col gap-8">
                 {/* Before View */}
-                <div className="bg-white rounded-xl shadow-md p-5 border border-indigo-100">
+                <div className="bg-white rounded-xl shadow-md p-5 border border-indigo-100 w-full overflow-hidden">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-semibold text-gray-800 flex items-center">
                             {activeView === "matrix" ? (
@@ -173,6 +159,9 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                             <span className="mr-3">
                                 Layer {selectedLayer + 1}, Head {selectedHead + 1}
                             </span>
+                            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
+                                {activeView === "matrix" ? "Token Attention Matrix" : "Subword Token Flow"}
+                            </span>
                         </div>
                     </div>
 
@@ -184,16 +173,16 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                         </div>
                     </div>
 
-                    {beforeHeadData && (
-                        activeView === "matrix" ? (
+                    <div className="flex justify-center">
+                        {activeView === "matrix" ? (
                             <AttentionMatrix
                                 tokens={beforeTokensWithIndex}
                                 head={{
                                     ...beforeHeadData,
-                                    headIndex: selectedHead,
+                                    headIndex: selectedHead
                                 }}
-                                width={400} // Slightly smaller for side-by-side
-                                height={400}
+                                width={1000}
+                                height={600}
                                 selectedTokenIndex={selectedTokenIndex}
                             />
                         ) : (
@@ -201,18 +190,18 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                                 tokens={beforeTokensWithIndex}
                                 head={{
                                     ...beforeHeadData,
-                                    headIndex: selectedHead,
+                                    headIndex: selectedHead
                                 }}
-                                width={400} // Slightly smaller for side-by-side
-                                height={400}
+                                width={1000}
+                                height={beforeData.tokens.length <= 10 ? 400 : 700}
                                 selectedTokenIndex={selectedTokenIndex}
                             />
-                        )
-                    )}
+                        )}
+                    </div>
                 </div>
 
                 {/* After View */}
-                <div className="bg-white rounded-xl shadow-md p-5 border border-indigo-100">
+                <div className="bg-white rounded-xl shadow-md p-5 border border-indigo-100 w-full overflow-hidden">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-semibold text-gray-800 flex items-center">
                             {activeView === "matrix" ? (
@@ -226,6 +215,9 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                             <span className="mr-3">
                                 Layer {selectedLayer + 1}, Head {selectedHead + 1}
                             </span>
+                            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
+                                {activeView === "matrix" ? "Token Attention Matrix" : "Subword Token Flow"}
+                            </span>
                         </div>
                     </div>
 
@@ -237,16 +229,16 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                         </div>
                     </div>
 
-                    {afterHeadData && (
-                        activeView === "matrix" ? (
+                    <div className="flex justify-center">
+                        {activeView === "matrix" ? (
                             <AttentionMatrix
                                 tokens={afterTokensWithIndex}
                                 head={{
                                     ...afterHeadData,
-                                    headIndex: selectedHead,
+                                    headIndex: selectedHead
                                 }}
-                                width={400} // Slightly smaller for side-by-side
-                                height={400}
+                                width={1000}
+                                height={600}
                                 selectedTokenIndex={selectedTokenIndex}
                             />
                         ) : (
@@ -254,20 +246,20 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                                 tokens={afterTokensWithIndex}
                                 head={{
                                     ...afterHeadData,
-                                    headIndex: selectedHead,
+                                    headIndex: selectedHead
                                 }}
-                                width={400} // Slightly smaller for side-by-side
-                                height={400}
+                                width={1000}
+                                height={afterData.tokens.length <= 10 ? 400 : 700}
                                 selectedTokenIndex={selectedTokenIndex}
                             />
-                        )
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Bar Charts - Added for the comparison view */}
             {selectedTokenIndex !== null && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-8">
                     {/* Before Bar Chart */}
                     {beforeWordAttentionData && (
                         <div className="bg-white rounded-xl shadow-md p-5 border border-indigo-100">
@@ -279,8 +271,8 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                             <div className="flex justify-center">
                                 <WordAttentionBarChart
                                     data={beforeWordAttentionData}
-                                    width={375}
-                                    height={300}
+                                    width={1000}
+                                    height={450}
                                 />
                             </div>
                         </div>
@@ -297,8 +289,8 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                             <div className="flex justify-center">
                                 <WordAttentionBarChart
                                     data={afterWordAttentionData}
-                                    width={375}
-                                    height={300}
+                                    width={1000}
+                                    height={450}
                                 />
                             </div>
                         </div>

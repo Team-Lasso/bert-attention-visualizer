@@ -41,7 +41,7 @@ const VisualizationDisplay: React.FC<VisualizationDisplayProps> = ({
             ) : (
               <GitBranch size={20} className="mr-2 text-indigo-600" />
             )}
-            {activeView === "matrix" ? "Attention Matrix" : "Attention Flow"}
+            {activeView === "matrix" ? "Token Attention Matrix" : "Subword Token Flow"}
           </h2>
           <div className="text-sm text-gray-500 flex items-center">
             <span className="mr-3">
@@ -62,8 +62,8 @@ const VisualizationDisplay: React.FC<VisualizationDisplayProps> = ({
                 ...currentHead,
                 headIndex: selectedHead,
               }}
-              width={800}
-              height={500}
+              width={1000}
+              height={600}
               selectedTokenIndex={selectedTokenIndex}
             />
           ) : (
@@ -73,8 +73,8 @@ const VisualizationDisplay: React.FC<VisualizationDisplayProps> = ({
                 ...currentHead,
                 headIndex: selectedHead,
               }}
-              width={800}
-              height={500}
+              width={1000}
+              height={tokens.length <= 10 ? 400 : 700}
               selectedTokenIndex={selectedTokenIndex}
             />
           )}
@@ -92,8 +92,8 @@ const VisualizationDisplay: React.FC<VisualizationDisplayProps> = ({
           <div className="flex justify-center">
             <WordAttentionBarChart
               data={wordAttentionData}
-              width={750}
-              height={300}
+              width={900}
+              height={400}
             />
           </div>
         </div>
