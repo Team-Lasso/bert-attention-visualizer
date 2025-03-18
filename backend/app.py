@@ -1,5 +1,7 @@
 import torch
 from fastapi import FastAPI, HTTPException, Header
+from fastapi import Response
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Set, Pattern, Match, Optional
@@ -285,6 +287,24 @@ class ComparisonRequest(BaseModel):
 class AttentionComparisonResponse(BaseModel):
     before_attention: AttentionData
     after_attention: AttentionData
+
+@app.get("/")
+async def root():
+    """
+    Root endpoint that provides information about the API
+    """
+    return {
+        "message": "BERT Attention Visualizer API",
+        "version": "1.0",
+        "endpoints": {
+            "GET /models": "Get available models",
+            "POST /tokenize": "Tokenize text",
+            "POST /predict_masked": "Predict masked token",
+            "POST /attention": "Get attention matrices",
+            "POST /attention_comparison": "Compare attention before and after word replacement"
+        },
+        "docs": "/docs"  # Link to API documentation
+    }
 
 @app.get("/models")
 async def get_available_models():
