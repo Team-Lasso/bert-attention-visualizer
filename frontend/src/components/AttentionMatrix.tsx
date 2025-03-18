@@ -13,6 +13,81 @@ interface AttentionMatrixProps {
   selectedTokenIndex: number | null;
 }
 
+/**
+ * Normalizes attention values to sum to 1 (100%) for each row
+ */
+const normalizeAttentionValues = (attentionMatrix: number[][]): number[][] => {
+  console.log("Before normalization - row sums:", attentionMatrix.map(row =>
+    row.reduce((acc, val) => acc + val, 0).toFixed(2)
+  ));
+
+  const normalized = attentionMatrix.map(row => {
+    const sum = row.reduce((acc, val) => acc + val, 0);
+    // If sum is 0, avoid division by zero
+    if (sum === 0) return row.map(() => 0);
+    // Normalize each value so the row sums to 1 (100%)
+    return row.map(val => val / sum);
+  });
+
+  console.log("After normalization - row sums:", normalized.map(row =>
+    row.reduce((acc, val) => acc + val, 0).toFixed(2)
+  ));
+
+  return normalized;
+};
+
+// Helper function to ensure percentages sum to 100%
+const formatPercentagesWithCorrectSum = (row: number[]): string[] => {
+  // A little extra logging to see what's happening
+  console.log("Raw row values before percentage calculation:",
+    row.map(v => v.toFixed(4)).join(", "),
+    "Sum:", row.reduce((sum, v) => sum + v, 0).toFixed(4)
+  );
+
+  // Step 1: Calculate the exact percentages
+  const exactPercentages = row.map(val => val * 100);
+
+  // Step 2: Floor all values to get the integer part
+  const flooredValues = exactPercentages.map(val => Math.floor(val));
+
+  // Step 3: Calculate how much we're off by due to rounding
+  const totalFloored = flooredValues.reduce((sum, val) => sum + val, 0);
+  const remainingPercent = 100 - totalFloored;
+
+  // Log the calculation
+  console.log("After floor:", flooredValues.join(", "),
+    "Sum:", totalFloored,
+    "Remaining:", remainingPercent
+  );
+
+  // Step 4: Get the decimal parts to determine which values to round up
+  const decimalParts = exactPercentages.map((val, i) => ({
+    index: i,
+    decimal: val - flooredValues[i]
+  }));
+
+  // Step 5: Sort by decimal part to distribute the remaining percentage
+  decimalParts.sort((a, b) => b.decimal - a.decimal);
+
+  // Step 6: Create the final percentages
+  const finalPercentages = [...flooredValues];
+  for (let i = 0; i < remainingPercent; i++) {
+    if (i < decimalParts.length) {
+      finalPercentages[decimalParts[i].index]++;
+    }
+  }
+
+  // Final verification
+  const total = finalPercentages.reduce((sum, val) => sum + val, 0);
+  console.log("Final percentages:", finalPercentages.join(", "),
+    "Sum:", total,
+    total === 100 ? "✓" : "❌"
+  );
+
+  // Step 7: Format as percentage strings
+  return finalPercentages.map(val => `${val}%`);
+};
+
 const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
   tokens,
   head,
@@ -28,13 +103,54 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
+    // Log tokens to see what we're displaying
+    console.log("Tokens to display:", tokens.map(t => ({
+      text: t.text,
+      index: t.index
+    })));
+    console.log("Total tokens:", tokens.length);
+
+    // Check if we have more tokens than are displayed in the heatmap
+    const firstRowValues = head.attention[0];
+    if (firstRowValues.length !== tokens.length) {
+      console.warn(`Attention matrix size mismatch: first row has ${firstRowValues.length} values but we have ${tokens.length} tokens`);
+    }
+
     const margin = { top: 50, right: 20, bottom: 50, left: 50 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
+    // Normalize the attention matrix so each row sums to 100%
+    const normalizedAttention = normalizeAttentionValues(head.attention);
+
+    // Verify rows sum to 100% (approximately 1.0)
+    const rowSums = normalizedAttention.map(row =>
+      row.reduce((sum, val) => sum + val, 0)
+    );
+    console.log("Row sums in render (should all be close to 1.0):",
+      rowSums.map(val => val.toFixed(2))
+    );
+
+    // Double check: compare original to normalized values for first row
+    if (normalizedAttention.length > 0 && head.attention.length > 0) {
+      console.log("Original first row:", head.attention[0].map(v => (v * 100).toFixed(0) + "%"));
+      console.log("Normalized first row:", normalizedAttention[0].map(v => (v * 100).toFixed(0) + "%"));
+    }
+
+    // IMPORTANT: Check if we have a mismatch between tokens and attention matrix size
+    // This could happen if the backend includes special tokens that aren't shown in the UI
+    const matrixSize = normalizedAttention[0]?.length || 0;
+    const visibleTokenCount = Math.min(tokens.length, matrixSize);
+
+    if (matrixSize !== tokens.length) {
+      console.warn(`Size mismatch: Attention matrix has ${matrixSize} columns but there are ${tokens.length} tokens. Using ${visibleTokenCount} tokens for visualization.`);
+      // We'll use only the visible tokens for rendering, but this could affect accuracy
+    }
+
+    // Calculate cell size based on visible token count
     const cellSize = Math.min(
-      innerWidth / tokens.length,
-      innerHeight / tokens.length
+      innerWidth / visibleTokenCount,
+      innerHeight / visibleTokenCount
     );
 
     const g = svg
@@ -43,7 +159,7 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
 
     // Color scale for attention weights - using a more vibrant blue gradient
     const colorScale = d3.scaleSequential(d3.interpolateBlues)
-      .domain([0, d3.max(head.attention.flat()) || 1]);
+      .domain([0, d3.max(normalizedAttention.flat()) || 1]);
 
     // Add background for better visibility
     g.append("rect")
@@ -56,14 +172,22 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
       .attr("ry", 8);
 
     // Create the heatmap cells with animation
-    tokens.forEach((sourceToken, i) => {
-      tokens.forEach((targetToken, j) => {
-        // Calculate percentage for display
-        const attentionValue = head.attention[i][j];
-        // Format with appropriate precision: 0 decimals for values ≥ 1%, 1 decimal for smaller values
-        const percentage = attentionValue >= 0.01
-          ? Math.round(attentionValue * 100) + '%'  // 1% or above: no decimal
-          : (attentionValue * 100).toFixed(1) + '%'; // Below 1%: 1 decimal place
+    for (let i = 0; i < visibleTokenCount; i++) {
+      const sourceToken = tokens[i];
+      // Pre-calculate all percentages for this row to ensure they sum to 100%
+      const visibleRowValues = normalizedAttention[i].slice(0, visibleTokenCount);
+      // Re-normalize the visible row to ensure it sums to 1.0
+      const sum = visibleRowValues.reduce((acc, val) => acc + val, 0);
+      const normalizedVisibleRow = sum > 0
+        ? visibleRowValues.map(val => val / sum)
+        : visibleRowValues;
+
+      const rowPercentages = formatPercentagesWithCorrectSum(normalizedVisibleRow);
+
+      for (let j = 0; j < visibleTokenCount; j++) {
+        const targetToken = tokens[j];
+        // Use the pre-calculated percentage that ensures row sums to 100%
+        const percentage = rowPercentages[j];
 
         // Determine if cell should be highlighted based on selection
         const isHighlighted =
@@ -71,16 +195,16 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
           selectedTokenIndex === j;    // Column highlighted
 
         // Calculate enhanced color based on selection
-        let cellColor = colorScale(head.attention[i][j]);
+        let cellColor = colorScale(normalizedAttention[i][j]);
         if (selectedTokenIndex === i && selectedTokenIndex === j) {
           // Self-attention of selected token
           cellColor = '#ef4444'; // Red for self-attention of selected token
         } else if (selectedTokenIndex === i) {
           // From selected token to others - use orange/amber
-          cellColor = d3.interpolateRgb('#f97316', '#0ea5e9')(head.attention[i][j]);
+          cellColor = d3.interpolateRgb('#f97316', '#0ea5e9')(normalizedAttention[i][j]);
         } else if (selectedTokenIndex === j) {
           // From others to selected token - use green
-          cellColor = d3.interpolateRgb('#10b981', '#0ea5e9')(head.attention[i][j]);
+          cellColor = d3.interpolateRgb('#10b981', '#0ea5e9')(normalizedAttention[i][j]);
         }
 
         // Add cell with transition
@@ -116,7 +240,7 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
 
           // Determine opacity based on value to slightly fade very low values
           // but still keep them visible (minimum 0.7 opacity)
-          const textOpacity = Math.max(0.7, head.attention[i][j] * 2);
+          const textOpacity = Math.max(0.7, normalizedAttention[i][j] * 2);
 
           // Create percentage text with improved readability
           const textElement = g.append("text")
@@ -126,8 +250,8 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
             .attr("dominant-baseline", "middle")
             .attr("font-size", `${fontSize}px`)
             .attr("font-weight", "bold")
-            .attr("fill", head.attention[i][j] > 0.5 ? "white" : "black")
-            .attr("stroke", head.attention[i][j] > 0.5 ? "none" : "white") // Add stroke for better contrast
+            .attr("fill", normalizedAttention[i][j] > 0.5 ? "white" : "black")
+            .attr("stroke", normalizedAttention[i][j] > 0.5 ? "none" : "white") // Add stroke for better contrast
             .attr("stroke-width", "0.5px")
             .attr("paint-order", "stroke") // Make the stroke appear behind the text
             .attr("opacity", 0) // Start invisible
@@ -151,12 +275,12 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
           // Dispatch the event
           window.dispatchEvent(selectionEvent);
         });
-      });
-    });
+      }
+    }
 
     // Add x-axis labels (target tokens) with better styling and highlight
     const xLabels = g.selectAll(".x-label")
-      .data(tokens)
+      .data(tokens.slice(0, visibleTokenCount))
       .enter()
       .append("text")
       .attr("class", "x-label")
@@ -180,7 +304,7 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
 
     // Add y-axis labels (source tokens) with better styling and highlight
     const yLabels = g.selectAll(".y-label")
-      .data(tokens)
+      .data(tokens.slice(0, visibleTokenCount))
       .enter()
       .append("text")
       .attr("class", "y-label")
@@ -204,12 +328,12 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
     });
 
     // Add highlighting rectangles for selected token
-    if (selectedTokenIndex !== null) {
+    if (selectedTokenIndex !== null && selectedTokenIndex < visibleTokenCount) {
       // Highlight row
       g.append("rect")
         .attr("x", -5)
         .attr("y", selectedTokenIndex * cellSize)
-        .attr("width", tokens.length * cellSize + 5)
+        .attr("width", visibleTokenCount * cellSize + 5)
         .attr("height", cellSize)
         .attr("fill", "rgba(59, 130, 246, 0.1)")
         .attr("stroke", "none");
@@ -219,7 +343,7 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
         .attr("x", selectedTokenIndex * cellSize)
         .attr("y", -5)
         .attr("width", cellSize)
-        .attr("height", tokens.length * cellSize + 5)
+        .attr("height", visibleTokenCount * cellSize + 5)
         .attr("fill", "rgba(59, 130, 246, 0.1)")
         .attr("stroke", "none");
     }

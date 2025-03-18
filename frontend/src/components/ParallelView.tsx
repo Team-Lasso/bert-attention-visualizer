@@ -46,6 +46,23 @@ const ParallelView: React.FC<ParallelViewProps> = ({
       }
     });
 
+    // IMPORTANT: Check if we have a mismatch between tokens and attention matrix size
+    // This could happen if the backend includes special tokens that aren't shown in the UI
+    const matrixSize = head.attention[0]?.length || 0;
+    const visibleTokenCount = Math.min(tokens.length, matrixSize);
+
+    if (matrixSize !== tokens.length) {
+      console.warn(`Size mismatch in ParallelView: Attention matrix has ${matrixSize} columns but there are ${tokens.length} tokens. Using ${visibleTokenCount} tokens for visualization.`);
+      // We'll use only the visible tokens for rendering, but this could affect accuracy
+    }
+
+    // Log tokens to see what we're displaying
+    console.log("Tokens to display in ParallelView:", tokens.map(t => ({
+      text: t.text,
+      index: t.index
+    })));
+    console.log("Total tokens:", tokens.length, "Matrix size:", matrixSize);
+
     // Main container dimensions
     const containerWidth = width;
     const containerHeight = height - 50; // Space for bottom text
@@ -273,22 +290,32 @@ const ParallelView: React.FC<ParallelViewProps> = ({
           element.innerHTML = '';
         });
 
-        if (selectedTokenIndex !== null) {
+        if (selectedTokenIndex !== null && selectedTokenIndex < visibleTokenCount) {
           // Selected token to all targets
           const sourceToken = sourceTokenElements[selectedTokenIndex];
           const sourcePos = getTokenPosition(sourceToken);
 
           // Sort attention values to display in descending order
-          const attentionValues = tokens.map((_, targetIdx) => ({
-            targetIdx,
-            value: head.attention[selectedTokenIndex][targetIdx]
-          })).filter(item => item.value > 0.00001);
+          const attentionValues = tokens.slice(0, visibleTokenCount).map((_, targetIdx) => {
+            // Ensure we're only working with visible tokens
+            return {
+              targetIdx,
+              value: head.attention[selectedTokenIndex][targetIdx]
+            };
+          }).filter(item => item.value > 0.00001);
+
+          // Ensure percentages sum to 100% - normalize the values
+          const totalAttention = attentionValues.reduce((sum, { value }) => sum + value, 0);
+          const normalizedValues = attentionValues.map(item => ({
+            ...item,
+            value: totalAttention > 0 ? (item.value / totalAttention) : item.value
+          }));
 
           // Sort by value in descending order
-          attentionValues.sort((a, b) => b.value - a.value);
+          normalizedValues.sort((a, b) => b.value - a.value);
 
           // Draw connections for sorted values
-          attentionValues.forEach(({ targetIdx, value }) => {
+          normalizedValues.forEach(({ targetIdx, value }) => {
             const targetToken = targetTokenElements[targetIdx];
             const targetPos = getTokenPosition(targetToken);
 
@@ -344,8 +371,8 @@ const ParallelView: React.FC<ParallelViewProps> = ({
         } else {
           // Show all significant connections with wider spacing
           // For the no-selection state, limit connections to reduce clutter
-          tokens.forEach((_, sourceIdx) => {
-            tokens.forEach((_, targetIdx) => {
+          tokens.slice(0, visibleTokenCount).forEach((_, sourceIdx) => {
+            tokens.slice(0, visibleTokenCount).forEach((_, targetIdx) => {
               const attentionValue = head.attention[sourceIdx][targetIdx];
               // Lower threshold when no token is selected (1% instead of 5%)
               if (attentionValue > 0.01) {
