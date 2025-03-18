@@ -49,31 +49,87 @@ const ParallelView: React.FC<ParallelViewProps> = ({
     // IMPORTANT: Check if we have a mismatch between tokens and attention matrix size
     // This could happen if the backend includes special tokens that aren't shown in the UI
     const matrixSize = head.attention[0]?.length || 0;
-    const visibleTokenCount = Math.min(tokens.length, matrixSize);
 
     if (matrixSize !== tokens.length) {
-      console.warn(`Size mismatch in ParallelView: Attention matrix has ${matrixSize} columns but there are ${tokens.length} tokens. Using ${visibleTokenCount} tokens for visualization.`);
-      // We'll use only the visible tokens for rendering, but this could affect accuracy
+      console.warn(`Size mismatch in ParallelView: Attention matrix has ${matrixSize} columns but there are ${tokens.length} tokens.`);
     }
 
-    // Log tokens to see what we're displaying
-    console.log("Tokens to display in ParallelView:", tokens.map(t => ({
-      text: t.text,
-      index: t.index
-    })));
-    console.log("Total tokens:", tokens.length, "Matrix size:", matrixSize);
+    // Function to safely access attention values, preventing out-of-bounds errors
+    const getSafeAttentionValue = (sourceIdx: number, targetIdx: number): number => {
+      if (sourceIdx < head.attention.length && targetIdx < matrixSize) {
+        return head.attention[sourceIdx][targetIdx];
+      }
+      return 0; // Default to 0 for out-of-bounds indices
+    };
 
-    // Main container dimensions
-    const containerWidth = width;
-    const containerHeight = height - 50; // Space for bottom text
+    // Base container dimensions
+    const providedWidth = width;
+    const providedHeight = height;
 
-    // Token and column dimensions - adjusted for better spacing
-    const tokenWidth = 160; // Slightly narrower tokens for better spacing
-    const percentageColumnWidth = 70; // Wider percentage column for better readability
-    const tokenHeight = 36; // Slightly smaller height for better vertical spacing
-    const tokenGap = 12; // Increased gap between tokens vertically
+    // Calculate dynamic size based on token count
+    const minTokenHeight = 30; // Further increased minimum height
+    const minTokenGap = 8; // Further increased minimum gap
+    const minTokenWidth = 150; // Further increased minimum width
+
+    // Base sizes for reference - increasing these values makes all tokens larger
+    const baseTokenWidth = 220;  // Significantly larger token width
+    const baseTokenHeight = 50;  // Significantly larger token height
+    const baseTokenGap = 16;     // Increased gap for better spacing
+
+    // Adaptive scaling - gradually reduce size as token count increases
+    // Use a logarithmic scale to handle very large token counts while keeping tokens readable
+    const tokenCountFactor = tokens.length <= 10 ? 1 :
+      (Math.log10(tokens.length) / Math.log10(50));
+    const scaleFactor = Math.max(0.5, 1 - (tokenCountFactor * 0.5));
+
+    // Calculate token dimensions
+    const tokenWidth = Math.max(minTokenWidth, baseTokenWidth * scaleFactor);
+    const percentageColumnWidth = Math.max(50, 70 * scaleFactor);
+    const tokenHeight = Math.max(minTokenHeight, baseTokenHeight * scaleFactor);
+    const tokenGap = Math.max(minTokenGap, baseTokenGap * scaleFactor);
     const totalTokenHeight = tokenHeight + tokenGap;
-    const betweenColumnGap = 60; // Increased gap between columns for less cramping
+
+    // Total required height for all tokens
+    const totalRequiredHeight = tokens.length * totalTokenHeight + 80; // Add extra padding
+
+    // Dynamically adjust the container height to fit all tokens if possible
+    // Use the provided height as a minimum, but expand if needed to fit all tokens
+    // NEW: If we have fewer tokens, shrink the container to fit
+    const minHeightBasedOnTokens = Math.min(providedHeight, totalRequiredHeight);
+    const containerHeight = tokens.length <= 10
+      ? minHeightBasedOnTokens // For few tokens, use the smaller calculated height
+      : Math.max(providedHeight - 50, totalRequiredHeight); // For many tokens, expand as needed
+
+    // If the container becomes too tall, enable scrolling
+    const maxHeight = window.innerHeight * 0.8; // Max 80% of viewport height
+    const needsScroll = containerHeight > maxHeight;
+
+    // Create content area - dynamically sized or scrollable
+    const contentArea = document.createElement('div');
+    contentArea.className = 'relative w-full';
+
+    if (needsScroll) {
+      contentArea.style.height = `${maxHeight}px`;
+      contentArea.style.overflowY = 'auto';
+      contentArea.style.overflowX = 'hidden';
+      contentArea.style.paddingRight = '5px'; // Account for scrollbar
+    } else {
+      contentArea.style.height = `${containerHeight}px`;
+    }
+
+    // Set container dimensions - dynamically sized based on content
+    container.style.height = needsScroll ? `${maxHeight + 50}px` : `${containerHeight + 50}px`;
+
+    // Apply compact styling for small token counts
+    if (tokens.length <= 10) {
+      container.style.marginBottom = '0';
+      container.style.paddingBottom = '0';
+    }
+
+    const containerWidth = providedWidth;
+
+    // Adjust between column gap based on available space
+    const betweenColumnGap = Math.max(20, 60 * scaleFactor); // Minimum gap of 20px
 
     // Total content width
     const totalContentWidth = tokenWidth * 2 + percentageColumnWidth + betweenColumnGap * 2;
@@ -93,24 +149,24 @@ const ParallelView: React.FC<ParallelViewProps> = ({
 
     // Create header
     const header = document.createElement('div');
-    header.className = 'flex w-full mb-6 px-2'; // Increased bottom margin
+    header.className = 'flex w-full mb-8 px-2'; // Increased bottom margin
     header.style.paddingLeft = `${leftOffset}px`; // Align headers with columns
 
     const sourceHeader = document.createElement('div');
-    sourceHeader.className = 'font-bold text-slate-700 text-lg';
+    sourceHeader.className = 'font-bold text-slate-700 text-xl'; // Increased font size
     sourceHeader.style.width = `${tokenWidth}px`;
     sourceHeader.style.textAlign = 'center';
     sourceHeader.textContent = 'Source Tokens';
 
     const targetHeader = document.createElement('div');
-    targetHeader.className = 'font-bold text-slate-700 text-lg';
+    targetHeader.className = 'font-bold text-slate-700 text-xl'; // Increased font size
     targetHeader.style.width = `${tokenWidth}px`;
     targetHeader.style.textAlign = 'center';
     targetHeader.style.marginLeft = `${betweenColumnGap}px`;
     targetHeader.textContent = 'Target Tokens';
 
     const percentageHeader = document.createElement('div');
-    percentageHeader.className = 'font-bold text-slate-700 text-lg';
+    percentageHeader.className = 'font-bold text-slate-700 text-xl'; // Increased font size
     percentageHeader.style.width = `${percentageColumnWidth}px`;
     percentageHeader.style.textAlign = 'center';
     percentageHeader.style.marginLeft = `${betweenColumnGap / 2}px`;
@@ -121,23 +177,26 @@ const ParallelView: React.FC<ParallelViewProps> = ({
     header.appendChild(percentageHeader);
     mainLayout.appendChild(header);
 
-    // Create content area with tokens
-    const contentArea = document.createElement('div');
-    contentArea.className = 'relative w-full';
-    contentArea.style.height = `${containerHeight}px`;
+    // Create content container
     mainLayout.appendChild(contentArea);
+
+    // Create inner content div for scroll support
+    const innerContent = document.createElement('div');
+    innerContent.className = 'relative w-full';
+    innerContent.style.height = `${totalRequiredHeight}px`;
+    contentArea.appendChild(innerContent);
 
     // Position SVG as the background for connections
     svgRef.current.style.position = 'absolute';
     svgRef.current.style.top = '0';
     svgRef.current.style.left = '0';
     svgRef.current.style.width = `${containerWidth}px`;
-    svgRef.current.style.height = `${containerHeight}px`;
-    contentArea.appendChild(svgRef.current);
+    svgRef.current.style.height = `${totalRequiredHeight}px`;
+    innerContent.appendChild(svgRef.current);
 
     // Set SVG dimensions properly with D3
     svg.attr('width', containerWidth)
-      .attr('height', containerHeight);
+      .attr('height', totalRequiredHeight);
 
     // Create token columns
     const sourceColumn = document.createElement('div');
@@ -155,19 +214,32 @@ const ParallelView: React.FC<ParallelViewProps> = ({
     percentageColumn.style.width = `${percentageColumnWidth}px`;
     percentageColumn.style.left = `${percentageColX}px`;
 
-    contentArea.appendChild(sourceColumn);
-    contentArea.appendChild(targetColumn);
-    contentArea.appendChild(percentageColumn);
+    innerContent.appendChild(sourceColumn);
+    innerContent.appendChild(targetColumn);
+    innerContent.appendChild(percentageColumn);
 
     // Style for improved appearance
     header.style.display = 'flex';
     header.style.width = '100%';
 
-    // Create colors
+    // Create expanded color palette with more vibrant and distinct colors
     const colors = [
-      '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
-      '#1abc9c', '#d35400', '#34495e', '#95a5a6', '#8e44ad',
-      '#16a085', '#c0392b', '#27ae60', '#f1c40f', '#7f8c8d'
+      // Primary blue spectrum
+      '#3498db', '#2980b9', '#1a5276', '#5dade2', '#85c1e9',
+      // Red spectrum
+      '#e74c3c', '#c0392b', '#922b21', '#f1948a', '#fadbd8',
+      // Green spectrum
+      '#2ecc71', '#27ae60', '#229954', '#58d68d', '#a9dfbf',
+      // Orange spectrum
+      '#f39c12', '#d35400', '#a04000', '#f5b041', '#fad7a0',
+      // Purple spectrum
+      '#9b59b6', '#8e44ad', '#6c3483', '#bb8fce', '#d2b4de',
+      // Teal and turquoise
+      '#1abc9c', '#16a085', '#117a65', '#76d7c4', '#a3e4d7',
+      // Mixed colors
+      '#34495e', '#95a5a6', '#7f8c8d', '#f1c40f', '#28b463',
+      '#dc7633', '#af7ac5', '#5499c7', '#48c9b0', '#eb984e',
+      '#884ea0', '#2471a3', '#0e6655', '#ba4a00', '#2e4053'
     ];
 
     // Store token elements for precise positioning
@@ -175,7 +247,7 @@ const ParallelView: React.FC<ParallelViewProps> = ({
     const targetTokenElements: HTMLElement[] = [];
     const percentageElements: Map<string, HTMLElement> = new Map(); // Store percentage elements for each connection
 
-    // Create tokens with exact positioning
+    // Create tokens with exact positioning - use all tokens
     tokens.forEach((token, i) => {
       const color = colors[i % colors.length];
       const topPosition = i * totalTokenHeight;
@@ -196,6 +268,16 @@ const ParallelView: React.FC<ParallelViewProps> = ({
       sourceTokenWrap.appendChild(sourceToken);
       sourceTokenElements.push(sourceToken);
 
+      // Adjust font size based on token length and available width
+      const fontSize = Math.min(18, Math.max(12, 18 * scaleFactor)); // Further increased font size range
+      sourceToken.style.fontSize = `${fontSize}px`;
+
+      // Add text truncation for very long tokens
+      sourceToken.style.overflow = 'hidden';
+      sourceToken.style.textOverflow = 'ellipsis';
+      sourceToken.style.whiteSpace = 'nowrap';
+      sourceToken.style.padding = '0 12px';  // Increased padding for better text display
+
       // Add enhanced selection effect
       if (selectedTokenIndex === i) {
         sourceToken.style.boxShadow = '0 0 0 3px #3b82f6, 0 2px 4px rgba(0,0,0,0.1)';
@@ -208,6 +290,12 @@ const ParallelView: React.FC<ParallelViewProps> = ({
         indicator.className = 'absolute -right-2 -top-2 bg-indigo-600 rounded-full w-6 h-6 flex items-center justify-center';
         indicator.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
         sourceToken.appendChild(indicator);
+
+        // Auto-scroll to the selected token if needed
+        if (needsScroll) {
+          const scrollPos = topPosition - contentArea.clientHeight / 2 + tokenHeight / 2;
+          contentArea.scrollTop = Math.max(0, scrollPos);
+        }
       }
 
       // Add hover effect to all source tokens
@@ -237,6 +325,14 @@ const ParallelView: React.FC<ParallelViewProps> = ({
       targetToken.style.backgroundColor = color;
       targetToken.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
       targetToken.textContent = token.text;
+      targetToken.style.fontSize = `${fontSize}px`; // Apply same font size
+
+      // Add text truncation for very long tokens
+      targetToken.style.overflow = 'hidden';
+      targetToken.style.textOverflow = 'ellipsis';
+      targetToken.style.whiteSpace = 'nowrap';
+      targetToken.style.padding = '0 12px';  // Increased padding
+
       targetTokenWrap.appendChild(targetToken);
       targetTokenElements.push(targetToken);
 
@@ -272,7 +368,7 @@ const ParallelView: React.FC<ParallelViewProps> = ({
     // Helper function to get token position
     const getTokenPosition = (element: HTMLElement) => {
       const rect = element.getBoundingClientRect();
-      const containerRect = contentArea.getBoundingClientRect();
+      const containerRect = innerContent.getBoundingClientRect();
       return {
         left: rect.left - containerRect.left,
         right: rect.right - containerRect.left,
@@ -290,19 +386,21 @@ const ParallelView: React.FC<ParallelViewProps> = ({
           element.innerHTML = '';
         });
 
-        if (selectedTokenIndex !== null && selectedTokenIndex < visibleTokenCount) {
+        if (selectedTokenIndex !== null && selectedTokenIndex < tokens.length) {
           // Selected token to all targets
           const sourceToken = sourceTokenElements[selectedTokenIndex];
           const sourcePos = getTokenPosition(sourceToken);
 
-          // Sort attention values to display in descending order
-          const attentionValues = tokens.slice(0, visibleTokenCount).map((_, targetIdx) => {
-            // Ensure we're only working with visible tokens
+          // Get attention values for all target tokens that exist in the matrix
+          const attentionValues = tokens.map((_, targetIdx) => {
+            // Ensure target index is within the attention matrix bounds
+            const value = getSafeAttentionValue(selectedTokenIndex, targetIdx);
+
             return {
               targetIdx,
-              value: head.attention[selectedTokenIndex][targetIdx]
+              value
             };
-          }).filter(item => item.value > 0.00001);
+          }).filter(item => item.value > 0.00001); // Filter out very small values
 
           // Ensure percentages sum to 100% - normalize the values
           const totalAttention = attentionValues.reduce((sum, { value }) => sum + value, 0);
@@ -345,12 +443,13 @@ const ParallelView: React.FC<ParallelViewProps> = ({
 
               // Create percentage badge with improved styling
               const badge = document.createElement('div');
-              badge.className = 'font-medium text-center transition-all px-2';
-              badge.style.width = '100%';
+              badge.className = 'font-bold text-center transition-all px-3 py-1 rounded-md';
+              badge.style.width = '90%';
               badge.style.color = colors[selectedTokenIndex % colors.length];
-              badge.style.opacity = Math.min(1, Math.max(0.75, value * 2)).toString(); // Slightly increased minimum opacity
-              badge.style.fontWeight = 'bold';
-              badge.style.fontSize = '14px'; // Consistent font size
+              badge.style.backgroundColor = `${colors[selectedTokenIndex % colors.length]}15`; // Very light background of the same color
+              badge.style.border = `1px solid ${colors[selectedTokenIndex % colors.length]}30`;
+              badge.style.opacity = Math.min(1, Math.max(0.85, value * 2)).toString(); // Increased minimum opacity
+              badge.style.fontSize = `${Math.max(14, 18 * scaleFactor)}px`; // Larger font size
               badge.textContent = percentageText;
 
               // Animate appearance
@@ -363,19 +462,23 @@ const ParallelView: React.FC<ParallelViewProps> = ({
 
               // Trigger animation
               setTimeout(() => {
-                badge.style.opacity = Math.min(1, Math.max(0.75, value * 2)).toString();
+                badge.style.opacity = Math.min(1, Math.max(0.85, value * 2)).toString();
                 badge.style.transform = 'translateX(0)';
               }, 50);
             }
           });
-        } else {
-          // Show all significant connections with wider spacing
+        } else if (tokens.length <= 100) {
+          // Only show default connections when we have a reasonable number of tokens
+          // to avoid overwhelming the visualization
           // For the no-selection state, limit connections to reduce clutter
-          tokens.slice(0, visibleTokenCount).forEach((_, sourceIdx) => {
-            tokens.slice(0, visibleTokenCount).forEach((_, targetIdx) => {
-              const attentionValue = head.attention[sourceIdx][targetIdx];
-              // Lower threshold when no token is selected (1% instead of 5%)
-              if (attentionValue > 0.01) {
+          tokens.forEach((_, sourceIdx) => {
+            // Only process tokens within the valid matrix range
+            tokens.forEach((_, targetIdx) => {
+              // Safely get attention value, avoiding out-of-bounds access
+              const attentionValue = getSafeAttentionValue(sourceIdx, targetIdx);
+              // Adjust threshold based on token count
+              const threshold = tokens.length <= 10 ? 0.01 : (0.01 * 10 / tokens.length);
+              if (attentionValue > threshold) {
                 const sourceToken = sourceTokenElements[sourceIdx];
                 const targetToken = targetTokenElements[targetIdx];
                 const sourcePos = getTokenPosition(sourceToken);
@@ -409,7 +512,15 @@ const ParallelView: React.FC<ParallelViewProps> = ({
           <div class="text-sm text-gray-600">to see its attention connections</div>
         </div>
       `;
-      contentArea.appendChild(instructionOverlay);
+      innerContent.appendChild(instructionOverlay);
+    }
+
+    // Add token count info when many tokens are present
+    if (tokens.length > 10) {
+      const tokenCountInfo = document.createElement('div');
+      tokenCountInfo.className = 'absolute top-2 right-2 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs';
+      tokenCountInfo.textContent = `${tokens.length} tokens`;
+      contentArea.appendChild(tokenCountInfo);
     }
 
     // Add event listener for token selection
@@ -484,7 +595,7 @@ const ParallelView: React.FC<ParallelViewProps> = ({
     <div
       ref={containerRef}
       className="flex flex-col items-center relative"
-      style={{ width: `${width}px`, height: `${height}px` }}
+      style={{ width: `${width}px` }}
     >
       <svg ref={svgRef}></svg>
     </div>
