@@ -132,14 +132,7 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                     </button>
                 </div>
 
-                <div className="flex justify-between px-4">
-                    <div className="text-center">
-                        <h3 className="font-medium text-gray-700">Before</h3>
-                    </div>
-                    <div className="text-center">
-                        <h3 className="font-medium text-gray-700">After</h3>
-                    </div>
-                </div>
+               
             </div>
 
             {/* Visualization Views - Changed from grid to flex column for more space */}
