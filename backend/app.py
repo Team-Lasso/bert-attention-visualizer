@@ -2,18 +2,14 @@ import torch
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Set, Pattern, Match, Optional
-import re
+from typing import List
 import nltk
 from nltk.tag import pos_tag
-from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
+import os
 from transformers import (
     AutoTokenizer, 
-    AutoModelForMaskedLM, 
-    BertTokenizer, 
     BertForMaskedLM,
-    RobertaTokenizer,
     RobertaForMaskedLM,
     BertModel,
     RobertaModel
@@ -31,10 +27,17 @@ except LookupError:
 
 app = FastAPI(title="BERT Attention Visualizer Backend")
 
+# Get allowed origins from environment variable or use default
+cors_origins_str = os.environ.get("CORS_ALLOW_ORIGINS", "http://localhost:5173")
+allowed_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+
+# Log the configured origins for debugging
+print(f"CORS allowed origins: {allowed_origins}")
+
 # Add CORS middleware to allow requests from frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update with your frontend URL in production
+    allow_origins=allowed_origins,  # Use the configured origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
