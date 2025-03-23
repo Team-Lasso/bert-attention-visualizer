@@ -1,47 +1,10 @@
 import torch
 from fastapi import HTTPException
-from transformers import (
-    AutoTokenizer, 
-    BertForMaskedLM,
-    RobertaForMaskedLM,
-    BertModel,
-    RobertaModel
-)
-
-from nltk.tag import pos_tag
+from models import *
+from nltk import pos_tag
 from nltk.corpus import stopwords
-import nltk
 
-# Download necessary NLTK data
-try:
-    nltk.data.find('tokenizers/punkt')
-    nltk.data.find('taggers/averaged_perceptron_tagger')
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('punkt')
-    nltk.download('averaged_perceptron_tagger')
-    nltk.download('stopwords')
-
-# Model cache
-models = {}
-tokenizers = {}
-
-# Available models
-MODEL_CONFIGS = {
-    "bert-base-uncased": {
-        "name": "BERT Base Uncased",
-        "model_class": BertForMaskedLM,
-        "tokenizer_class": AutoTokenizer,
-        "base_model_class": BertModel
-    },
-    "roberta-base": {
-        "name": "RoBERTa Base",
-        "model_class": RobertaForMaskedLM,
-        "tokenizer_class": AutoTokenizer,
-        "base_model_class": RobertaModel
-    }
-}
-
+# Add a helper function to clean RoBERTa tokens
 def clean_roberta_token(token: str) -> str:
     """
     Clean RoBERTa tokens by removing the leading 'Ġ' character which represents spaces.

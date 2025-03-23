@@ -1,7 +1,7 @@
 # Hugging Face Spaces entry point
 import os
 import uvicorn
-from app import app
+from main import app
 
 # This file gets copied to the root directory in the Docker container
 # and serves as the entry point for Hugging Face Spaces
