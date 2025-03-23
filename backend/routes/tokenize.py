@@ -4,7 +4,7 @@ from helpers import *
 
 router = APIRouter()
 
-@router.post("/", response_model=TokenizeResponse)
+@router.post("", response_model=TokenizeResponse)
 async def tokenize_text(request: TokenizeRequest):
     """Tokenize input text using the specified model's tokenizer"""
     try:

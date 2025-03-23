@@ -5,7 +5,7 @@ from attention_comparison_helpers import *
 router = APIRouter()
 
 
-@router.post("/", response_model=AttentionComparisonResponse)
+@router.post("", response_model=AttentionComparisonResponse)
 async def get_attention_comparison(request: ComparisonRequest):
     """
     Dispatcher for attention comparison - routes to the appropriate model-specific implementation

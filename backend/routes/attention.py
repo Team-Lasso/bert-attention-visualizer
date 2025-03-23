@@ -4,7 +4,7 @@ from helpers import *
 from routes.tokenize import tokenize_text
 router = APIRouter()
 
-@router.post("/", response_model=AttentionResponse)
+@router.post("", response_model=AttentionResponse)
 async def get_attention_matrices(request: AttentionRequest):
     """Get attention matrices for the input text using the specified model"""
     try:
