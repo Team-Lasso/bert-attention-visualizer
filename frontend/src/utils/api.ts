@@ -13,7 +13,15 @@ export function getApiUrl(endpoint: string): string {
     if (isProduction) {
         // In production, use the full URL to the Hugging Face Space
         // IMPORTANT: Do NOT add /api prefix when using HF Spaces
-        return `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+        // Force HTTPS for production to avoid mixed content errors
+        let url = API_BASE_URL;
+        // Ensure the URL starts with https://
+        if (url.startsWith('http://')) {
+            url = url.replace('http://', 'https://');
+        } else if (!url.startsWith('https://')) {
+            url = 'https://' + url;
+        }
+        return `${url}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
     } else {
         // In development, use the local proxy
         return `/api${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
