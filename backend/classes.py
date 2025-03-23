@@ -1,7 +1,6 @@
 from typing import List
 from pydantic import BaseModel
 
-
 class TokenizeRequest(BaseModel):
     text: str
     model_name: str = "bert-base-uncased"
