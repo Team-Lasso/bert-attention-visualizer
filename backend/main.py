@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.responses import RedirectResponse
 from routes.tokenize import router as tokenize_router
 from routes.mask_prediction import router as mask_router
 from routes.attention import router as attention_router
@@ -8,6 +10,15 @@ from routes.models import router as models_router
 
 app = FastAPI(title="BERT Attention Visualizer Backend")
 
+# Ensure the server correctly identifies forwarded HTTPS requests
+@app.middleware("http")
+async def force_https(request: Request, call_next):
+    if request.headers.get("x-forwarded-proto") == "http":
+        # Redirect to HTTPS if accessed via HTTP
+        return RedirectResponse(url=f"https://{request.headers['host']}{request.url.path}")
+    return await call_next(request)
+
+# Restrict CORS to your frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Update in production
@@ -15,6 +26,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Trust proxy headers for proper HTTPS handling
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # Include routers
 app.include_router(tokenize_router, prefix="/tokenize")
