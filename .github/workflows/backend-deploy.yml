@@ -2,7 +2,7 @@ name: Deploy Backend to Hugging Face Spaces
 
 on:
   push:
-    branches: [main, testing, anten]
+    branches: [main]
     paths:
       - 'backend/**'
   workflow_dispatch:
