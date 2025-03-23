@@ -13,9 +13,17 @@ app = FastAPI(title="BERT Attention Visualizer Backend")
 # Ensure the server correctly identifies forwarded HTTPS requests
 @app.middleware("http")
 async def force_https(request: Request, call_next):
-    if request.headers.get("x-forwarded-proto") == "http":
+    # Check if request is HTTP and needs to be upgraded to HTTPS
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    
+    if forwarded_proto == "http":
         # Redirect to HTTPS if accessed via HTTP
-        return RedirectResponse(url=f"https://{request.headers['host']}{request.url.path}")
+        https_url = f"https://{request.headers['host']}{request.url.path}"
+        if request.query_params:
+            https_url += f"?{request.query_params}"
+        return RedirectResponse(url=https_url, status_code=301)  # Permanent redirect
+        
+    # Continue with the request if already HTTPS or no proto header
     return await call_next(request)
 
 # Restrict CORS to your frontend

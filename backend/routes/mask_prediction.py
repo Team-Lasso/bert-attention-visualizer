@@ -7,7 +7,7 @@ router = APIRouter()
 
 
 
-@router.post("/", response_model=MaskPredictionResponse)
+@router.post("", response_model=MaskPredictionResponse)
 async def predict_masked_token(request: MaskPredictionRequest, x_token_to_mask: str = Header(None), x_explicit_masked_text: str = Header(None)):
     """Predict masked token using the specified model"""
     try:

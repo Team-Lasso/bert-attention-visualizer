@@ -3,7 +3,7 @@ from models import MODEL_CONFIGS
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("")
 async def get_available_models():
     """Get list of available models"""
     return {
