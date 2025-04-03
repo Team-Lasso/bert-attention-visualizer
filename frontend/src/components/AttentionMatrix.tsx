@@ -2,9 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { AttentionHead, Token } from '../types';
 
-/*
-被VisualizationDisplay.tsx调用
-*/
 interface AttentionMatrixProps {
   tokens: Token[];
   head: AttentionHead;
