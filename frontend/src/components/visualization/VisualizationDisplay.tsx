@@ -41,7 +41,9 @@ const VisualizationDisplay: React.FC<VisualizationDisplayProps> = ({
             ) : (
               <GitBranch size={20} className="mr-2 text-indigo-600" />
             )}
-            {activeView === "matrix" ? "Token Attention Matrix" : "Subword Token Flow"}
+            {activeView === "matrix"
+              ? "Token Attention Matrix"
+              : "Subword Token Flow"}
           </h2>
           <div className="text-sm text-gray-500 flex items-center">
             <span className="mr-3">
