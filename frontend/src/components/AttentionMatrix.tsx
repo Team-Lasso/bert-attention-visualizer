@@ -194,21 +194,6 @@ const AttentionMatrix: React.FC<AttentionMatrixProps> = ({
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Enhanced color palette for token highlighting, matching other components
-    const tokenColorPalette = [
-      // Blue shades
-      '#3498db', '#2980b9', '#1a5276', '#5dade2', '#85c1e9',
-      // Red/orange shades
-      '#e74c3c', '#c0392b', '#d35400', '#f39c12', '#f5b041',
-      // Green shades
-      '#2ecc71', '#27ae60', '#229954', '#58d68d', '#a9dfbf',
-      // Purple shades
-      '#9b59b6', '#8e44ad', '#6c3483', '#bb8fce', '#d2b4de',
-      // Teal/turquoise
-      '#1abc9c', '#16a085', '#117a65', '#76d7c4', '#a3e4d7',
-      // Additional colors
-      '#34495e', '#7f8c8d', '#f1c40f', '#28b463', '#dc7633'
-    ];
 
     // Color scale for attention weights - using a more vibrant blue gradient
     const colorScale = d3.scaleSequential(d3.interpolateBlues)
