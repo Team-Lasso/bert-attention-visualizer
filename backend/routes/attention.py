@@ -38,17 +38,25 @@ async def get_attention_matrices(request: AttentionRequest):
         model = models[base_model_key]
         tokenizer = tokenizers[request.model_name]
         
+        # AI-generated code
+        # Update attention matrix extraction to support DistilBERT and TinyBERT models
+        model_name_lower = request.model_name.lower()
+        
         # Get input tokens - use the same encoding approach as the tokenize endpoint
-        if "roberta" in request.model_name.lower():
+        if "roberta" in model_name_lower:
             encoding = tokenizer.encode_plus(
                 request.text, 
                 add_special_tokens=True, 
                 return_tensors="pt",
                 return_attention_mask=True
             )
+        elif "distilbert" in model_name_lower or "huawei-noah/tinybert" in model_name_lower or "bert" in model_name_lower:
+            # For DistilBERT and BERT/TinyBERT models
+            text = request.text
+            encoding = tokenizer(text, return_tensors="pt", add_special_tokens=True)
         else:
-            text = f"[CLS] {request.text} [SEP]"
-            encoding = tokenizer(text, return_tensors="pt")
+            # Fallback for other models
+            encoding = tokenizer(request.text, return_tensors="pt", add_special_tokens=True)
         
         if torch.cuda.is_available():
             encoding = {k: v.cuda() for k, v in encoding.items()}
@@ -57,20 +65,24 @@ async def get_attention_matrices(request: AttentionRequest):
         print("Running model inference to get attention matrices...")
         with torch.no_grad():
             try:
-                # Try without attn_implementation first (for older transformers versions)
+                # Try newer transformers syntax first
                 outputs = model(**encoding, output_attentions=True)
             except TypeError as e:
-                if "attn_implementation" in str(e):
-                    # Fall back to newer syntax for newer transformers versions
-                    print("Using older transformers version without attn_implementation")
+                print(f"Encountered error: {str(e)}")
+                if "unexpected keyword argument" in str(e):
+                    # Fall back for models with different API
+                    print("Using alternate model API")
+                    outputs = model(**encoding)
                 else:
-                    # Re-raise if it's not about attn_implementation
                     raise
             
         # Extract attention from outputs
         # outputs.attentions is a tuple of tensors with shape (batch_size, num_heads, seq_len, seq_len)
         # One tensor per layer
         attention_matrices = outputs.attentions
+        if attention_matrices is None:
+            raise ValueError(f"Model {request.model_name} did not return attention matrices. Please check if this model supports attention output.")
+            
         print(f"Got attention matrices for {len(attention_matrices)} layers")
         
         # Convert attention matrices to the expected response format
