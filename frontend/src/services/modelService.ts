@@ -234,9 +234,13 @@ export const getMaskedPredictions = async (
  * Get attention data for a sentence using the specified model
  * Now requires a working backend connection - no fallback to sample data
  */
-export const getAttentionData = async (text: string, modelName: string): Promise<AttentionData> => {
+export const getAttentionData = async (
+  text: string,
+  modelName: string,
+  visualizationMethod: 'raw' | 'rollout' | 'flow' = 'raw'
+): Promise<AttentionData> => {
   try {
-    console.log(`Fetching attention data for: "${text}" with model: ${modelName}`);
+    console.log(`Fetching attention data for: "${text}" with model: ${modelName}, method: ${visualizationMethod}`);
 
     const response = await fetch(`${getEndpointUrl('attention')}`, {
       method: 'POST',
@@ -246,6 +250,7 @@ export const getAttentionData = async (text: string, modelName: string): Promise
       body: JSON.stringify({
         text,
         model_name: modelName,
+        visualization_method: visualizationMethod
       }),
     });
 
@@ -305,11 +310,13 @@ export const getAttentionComparison = async (
   text: string,
   maskedIndex: number,
   replacementWord: string,
-  modelName: string
+  modelName: string,
+  visualizationMethod: 'raw' | 'rollout' | 'flow' = 'raw'
 ): Promise<{ before_attention: AttentionData, after_attention: AttentionData }> => {
   try {
     const isRoberta = modelName.includes('roberta');
     console.log(`Fetching attention comparison for: "${text}" with replacement "${replacementWord}" at index ${maskedIndex} (using ${isRoberta ? 'RoBERTa' : 'BERT'})`);
+    console.log(`Visualization method: ${visualizationMethod}`);
 
     // For RoBERTa, we need to handle token vs word indices differently
     // The backend now handles this internally with robust token-to-word mapping
@@ -334,6 +341,7 @@ export const getAttentionComparison = async (
         masked_index: maskedIndex,
         replacement_word: replacementWord,
         model_name: modelName,
+        visualization_method: visualizationMethod
       }),
     });
 

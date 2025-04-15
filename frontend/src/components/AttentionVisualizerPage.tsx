@@ -76,6 +76,10 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
     exitComparison,
     setComparisonView,
     handleViewAttentionComparison,
+
+    // Visualization method
+    visualizationMethod,
+    handleVisualizationMethodChange,
   } = useAttentionVisualizer(datasets);
 
   return (
@@ -140,6 +144,8 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
               totalLayers={currentData?.layers?.length || 0}
               totalHeads={currentData?.layers?.[0]?.heads?.length || 0}
               view="single"
+              visualizationMethod={visualizationMethod}
+              onVisualizationMethodChange={handleVisualizationMethodChange}
             />
 
             {/* Show either comparison view or regular view based on state */}
@@ -154,6 +160,7 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
                 replacementWord={comparisonData.replacementWord}
                 wordIndex={comparisonData.wordIndex}
                 onExitComparison={exitComparison}
+                visualizationMethod={comparisonData.visualizationMethod}
               />
             ) : (
               <VisualizationDisplay
@@ -170,6 +177,7 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
                 selectedTokenIndex={selectedTokenIndex}
                 activeView={activeView}
                 wordAttentionData={wordAttentionData}
+                visualizationMethod={visualizationMethod}
               />
             )}
           </div>
