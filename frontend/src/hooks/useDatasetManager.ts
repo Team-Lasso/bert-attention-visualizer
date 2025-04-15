@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { SampleData, AttentionData } from "../types";
 import { getAttentionData } from "../services/modelService";
+import { VisualizationMethod } from "../components/visualization/VisualizationMethodSelector";
 
 // Create empty attention data structure for initial state
 const emptyAttentionData: AttentionData = {
@@ -21,6 +22,7 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
   const [customDatasetCount, setCustomDatasetCount] = useState(0);
   const [currentModelId, setCurrentModelId] = useState<string>("bert-base-uncased");
   const [currentSentence, setCurrentSentence] = useState<string>("");
+  const [visualizationMethod, setVisualizationMethod] = useState<VisualizationMethod>("raw");
 
   // get the current data
   // Use empty attention data if there's no selected dataset
@@ -28,16 +30,22 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
 
   // sentence submission processing
   const handleSentenceSubmit = useCallback(
-    async (sentence: string, onDatasetAdded: () => void = () => { }, modelId: string = "bert-base-uncased") => {
+    async (
+      sentence: string,
+      onDatasetAdded: () => void = () => { },
+      modelId: string = "bert-base-uncased",
+      method: VisualizationMethod = "raw"
+    ) => {
       if (!sentence.trim()) return;
 
       setIsProcessing(true);
       setCurrentModelId(modelId);
       setCurrentSentence(sentence);
+      setVisualizationMethod(method);
 
       try {
         // Use the API to get real attention data
-        const attentionData = await getAttentionData(sentence, modelId);
+        const attentionData = await getAttentionData(sentence, modelId, method);
 
         const newDatasetName = `Custom ${customDatasetCount + 1}: "${sentence.length > 30 ? sentence.substring(0, 27) + "..." : sentence
           }"`;
@@ -66,6 +74,38 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
     [datasets.length, customDatasetCount]
   );
 
+  // Function to reload attention data with a different visualization method
+  const reloadWithVisualizationMethod = useCallback(
+    async (method: VisualizationMethod) => {
+      if (!currentSentence || isProcessing) return;
+
+      setIsProcessing(true);
+      setVisualizationMethod(method);
+
+      try {
+        // Use the API to get attention data with the new method
+        const attentionData = await getAttentionData(currentSentence, currentModelId, method);
+
+        // Update the current dataset with new data
+        setDatasets(prev => {
+          const updated = [...prev];
+          if (selectedDatasetIndex >= 0 && selectedDatasetIndex < updated.length) {
+            updated[selectedDatasetIndex] = {
+              ...updated[selectedDatasetIndex],
+              data: attentionData
+            };
+          }
+          return updated;
+        });
+      } catch (error) {
+        console.error("Error reloading with new visualization method:", error);
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [currentSentence, currentModelId, isProcessing, selectedDatasetIndex]
+  );
+
   // switch the dataset
   const selectDataset = useCallback(
     (index: number) => {
@@ -92,6 +132,7 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
     hasUserInput,
     currentModelId,
     currentSentence,
+    visualizationMethod,
 
     // operation functions
     handleSentenceSubmit,
@@ -99,5 +140,7 @@ export const useDatasetManager = (initialDatasets: SampleData[]) => {
     setSelectedDatasetIndex,
     setCurrentModelId,
     setCurrentSentence,
+    setVisualizationMethod,
+    reloadWithVisualizationMethod
   };
 };

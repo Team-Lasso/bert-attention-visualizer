@@ -4,6 +4,7 @@ import { AttentionData, WordAttentionData } from "../../types";
 import AttentionMatrix from "../AttentionMatrix";
 import ParallelView from "../ParallelView";
 import WordAttentionBarChart from "../WordAttentionBarChart";
+import { VisualizationMethod } from "./VisualizationMethodSelector";
 
 interface AttentionComparisonViewProps {
     beforeData: AttentionData;
@@ -15,6 +16,7 @@ interface AttentionComparisonViewProps {
     replacementWord: string | null;
     wordIndex: number | null;
     onExitComparison: () => void;
+    visualizationMethod?: VisualizationMethod;
 }
 
 const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
@@ -27,7 +29,20 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
     replacementWord,
     wordIndex,
     onExitComparison,
+    visualizationMethod = "raw"
 }) => {
+    // Determine if we're using an aggregate method
+    const isAggregateMethod = visualizationMethod === "rollout" || visualizationMethod === "flow";
+
+    // Helper function to get method display name
+    const getMethodDisplayName = () => {
+        switch (visualizationMethod) {
+            case "rollout": return "Attention Rollout";
+            case "flow": return "Attention Flow";
+            default: return "Raw Attention";
+        }
+    };
+
     // Get the current head data for both before and after
     const beforeLayerData = beforeData?.layers?.[selectedLayer];
     const beforeHeadData = beforeLayerData?.heads?.[selectedHead];
@@ -132,7 +147,7 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                     </button>
                 </div>
 
-               
+
             </div>
 
             {/* Visualization Views - Changed from grid to flex column for more space */}
@@ -147,12 +162,23 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                                 <GitBranch size={20} className="mr-2 text-indigo-600" />
                             )}
                             Original
+                            {isAggregateMethod && (
+                                <span className="ml-2 text-sm text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">
+                                    {getMethodDisplayName()}
+                                </span>
+                            )}
                         </h2>
                         <div className="text-sm text-gray-500 flex items-center">
-                            <span className="mr-3">
-                                Layer {selectedLayer + 1}, Head {selectedHead + 1}
-                            </span>
-                            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
+                            {isAggregateMethod ? (
+                                <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
+                                    Aggregated across all layers and heads
+                                </span>
+                            ) : (
+                                <span className="mr-3">
+                                    Layer {selectedLayer + 1}, Head {selectedHead + 1}
+                                </span>
+                            )}
+                            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs ml-2">
                                 {activeView === "matrix" ? "Token Attention Matrix" : "Subword Token Flow"}
                             </span>
                         </div>
@@ -203,12 +229,23 @@ const AttentionComparisonView: React.FC<AttentionComparisonViewProps> = ({
                                 <GitBranch size={20} className="mr-2 text-indigo-600" />
                             )}
                             With "{replacementWord}"
+                            {isAggregateMethod && (
+                                <span className="ml-2 text-sm text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">
+                                    {getMethodDisplayName()}
+                                </span>
+                            )}
                         </h2>
                         <div className="text-sm text-gray-500 flex items-center">
-                            <span className="mr-3">
-                                Layer {selectedLayer + 1}, Head {selectedHead + 1}
-                            </span>
-                            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
+                            {isAggregateMethod ? (
+                                <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
+                                    Aggregated across all layers and heads
+                                </span>
+                            ) : (
+                                <span className="mr-3">
+                                    Layer {selectedLayer + 1}, Head {selectedHead + 1}
+                                </span>
+                            )}
+                            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs ml-2">
                                 {activeView === "matrix" ? "Token Attention Matrix" : "Subword Token Flow"}
                             </span>
                         </div>

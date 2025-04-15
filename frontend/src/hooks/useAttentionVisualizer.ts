@@ -6,6 +6,7 @@ import { useTokenInteraction } from "./useTokenInteraction";
 import { useVisualizationControls } from "./useVisualizationControls";
 import { useAttentionComparison } from "./useAttentionComparison";
 import { tokenizeText } from "../services/modelService";
+import { VisualizationMethod } from "../components/visualization/VisualizationMethodSelector";
 
 /**
  * Main hook that integrates other hooks to provide complete attention visualization functionality
@@ -13,7 +14,16 @@ import { tokenizeText } from "../services/modelService";
 const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
   // Load the dataset manager hook
   const datasetManager = useDatasetManager(initialDatasets);
-  const { currentData, hasUserInput, currentModelId, setCurrentModelId, currentSentence } = datasetManager;
+  const {
+    currentData,
+    hasUserInput,
+    currentModelId,
+    setCurrentModelId,
+    currentSentence,
+    visualizationMethod,
+    setVisualizationMethod,
+    reloadWithVisualizationMethod
+  } = datasetManager;
 
   // Load the model selection hook
   const modelSelection = useModelSelection();
@@ -37,6 +47,16 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
   // Load the attention comparison hook
   const attentionComparison = useAttentionComparison();
 
+  // Handle visualization method change
+  const handleVisualizationMethodChange = useCallback(
+    (method: VisualizationMethod) => {
+      if (method !== visualizationMethod) {
+        reloadWithVisualizationMethod(method);
+      }
+    },
+    [visualizationMethod, reloadWithVisualizationMethod]
+  );
+
   // Handle the reset operation after the model is loaded
   const handleLoadModel = useCallback(() => {
     modelSelection.handleLoadModel(() => {
@@ -55,7 +75,7 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
     attentionComparison
   ]);
 
-  // Handle the sentence submission - now passes modelId
+  // Handle the sentence submission - now passes modelId and visualization method
   const handleSentenceSubmit = useCallback(
     (sentence: string) => {
       if (!sentence.trim()) return;
@@ -69,14 +89,16 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
       datasetManager.handleSentenceSubmit(
         sentence,
         () => tokenInteraction.resetTokenInteractions(),
-        modelSelection.selectedModelId
+        modelSelection.selectedModelId,
+        visualizationMethod
       );
     },
     [
       datasetManager.handleSentenceSubmit,
       tokenInteraction.resetTokenInteractions,
       modelSelection.selectedModelId,
-      attentionComparison
+      attentionComparison,
+      visualizationMethod
     ]
   );
 
@@ -108,14 +130,16 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
       text,
       tokenInteraction.maskedTokenIndex,
       tokenInteraction.selectedPrediction,
-      modelSelection.selectedModelId
+      modelSelection.selectedModelId,
+      visualizationMethod
     );
   }, [
     tokenInteraction.maskedTokenIndex,
     tokenInteraction.selectedPrediction,
     datasetManager.currentSentence,
     attentionComparison.startComparison,
-    modelSelection.selectedModelId
+    modelSelection.selectedModelId,
+    visualizationMethod
   ]);
 
   // Calculate the attention data of the selected token
@@ -148,6 +172,10 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
     // attention comparison
     ...attentionComparison,
     handleViewAttentionComparison,
+
+    // visualization method handling
+    visualizationMethod,
+    handleVisualizationMethodChange,
 
     // combine the functionality and calculation properties
     currentModel: modelSelection.currentModel,

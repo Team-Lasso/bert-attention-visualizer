@@ -16,11 +16,14 @@ async def get_attention_comparison(request: ComparisonRequest):
     print(f"Masked index: {request.masked_index}")
     print(f"Replacement word: '{request.replacement_word}'")
     print(f"Model: {request.model_name}")
+    print(f"Visualization method: {request.visualization_method}")
     
     # Dispatch based on model type
     if "roberta" in request.model_name.lower():
         return await get_attention_comparison_roberta(request)
     else:
+        # Both BERT and DistilBERT use the same tokenization approach (WordPiece)
+        # and can use the same comparison implementation
         return await get_attention_comparison_bert(request)
 
 

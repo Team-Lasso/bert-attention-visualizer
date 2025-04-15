@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Send } from "lucide-react";
 
-/*
-this component is called in SentenceInputSection.tsx
-*/
 interface SentenceInputProps {
   onSentenceSubmit: (sentence: string) => void;
   isLoading: boolean;
   initialValue?: string;
 }
+
+const MAX_WORDS = 30;
 
 const SentenceInput: React.FC<SentenceInputProps> = ({
   onSentenceSubmit,
@@ -25,9 +24,23 @@ const SentenceInput: React.FC<SentenceInputProps> = ({
   }, [initialValue]);
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); //prevent the default behavior, prevent the page from refreshing
+    e.preventDefault();
     if (sentence.trim()) {
       onSentenceSubmit(sentence.trim());
+    }
+  };
+
+  // Custom change handler enforcing a word limit
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    // Split the value by whitespace and filter out any empty strings
+    const words = inputValue.split(/\s+/).filter(Boolean);
+
+    if (words.length <= MAX_WORDS) {
+      setSentence(inputValue);
+    } else {
+      // Optionally, automatically trim to the max word count
+      setSentence(words.slice(0, MAX_WORDS).join(" "));
     }
   };
 
@@ -42,12 +55,10 @@ const SentenceInput: React.FC<SentenceInputProps> = ({
           <input
             type="text"
             value={sentence}
-            onChange={(e) => setSentence(e.target.value)}
+            onChange={handleChange}
             placeholder="E.g., The cat sat on the mat"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
             disabled={isLoading}
-            //TODO: here is the place that controls the max length of the input sentence
-            maxLength={30}
           />
           {sentence && (
             <button

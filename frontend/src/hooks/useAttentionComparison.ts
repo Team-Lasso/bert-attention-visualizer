@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { AttentionData } from "../types";
 import { getAttentionComparison } from "../services/modelService";
+import { VisualizationMethod } from "../components/visualization/VisualizationMethodSelector";
 
 /**
  * Hook for managing before/after attention comparison when a masked token is replaced
@@ -14,12 +15,14 @@ export const useAttentionComparison = () => {
         wordIndex: number | null;
         replacementWord: string | null;
         modelId: string | null;
+        visualizationMethod: VisualizationMethod;
     }>({
         before: null,
         after: null,
         wordIndex: null,
         replacementWord: null,
-        modelId: null
+        modelId: null,
+        visualizationMethod: "raw"
     });
     const [isLoadingComparison, setIsLoadingComparison] = useState(false);
     const [comparisonView, setComparisonView] = useState<"matrix" | "parallel">("parallel");
@@ -29,13 +32,15 @@ export const useAttentionComparison = () => {
         text: string,
         maskIndex: number,
         replacementWord: string,
-        modelId: string
+        modelId: string,
+        visualizationMethod: VisualizationMethod = "raw"
     ) => {
         setIsLoadingComparison(true);
         setIsComparing(true);
 
         try {
             console.log(`Starting comparison for "${text}" with replacement "${replacementWord}" at index ${maskIndex} using ${modelId}`);
+            console.log(`Visualization method: ${visualizationMethod}`);
 
             // Different handling based on model type (BERT vs RoBERTa)
             const isRoberta = modelId.includes('roberta');
@@ -45,7 +50,8 @@ export const useAttentionComparison = () => {
                 text,
                 maskIndex,
                 replacementWord,
-                modelId
+                modelId,
+                visualizationMethod
             );
 
             setComparisonData({
@@ -53,7 +59,8 @@ export const useAttentionComparison = () => {
                 after: after_attention,
                 wordIndex: maskIndex,
                 replacementWord: replacementWord,
-                modelId: modelId
+                modelId: modelId,
+                visualizationMethod: visualizationMethod
             });
 
             console.log("Comparison data loaded successfully");
@@ -73,7 +80,8 @@ export const useAttentionComparison = () => {
             after: null,
             wordIndex: null,
             replacementWord: null,
-            modelId: null
+            modelId: null,
+            visualizationMethod: "raw"
         });
     }, []);
 

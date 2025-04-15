@@ -27,7 +27,7 @@ async def tokenize_text(request: TokenizeRequest):
             # Clean the tokens to remove the leading 'Ġ' character from RoBERTa tokens
             tokens = [clean_roberta_token(token) for token in tokens]
         else:
-            # For BERT, add special tokens and tokenize
+            # For BERT and DistilBERT, add special tokens and tokenize
             text = f"[CLS] {request.text} [SEP]"
             tokens = tokenizer.tokenize(text)
         

@@ -1,4 +1,4 @@
-from transformers import BertForMaskedLM, RobertaForMaskedLM, AutoTokenizer, BertModel, RobertaModel
+from transformers import BertForMaskedLM, RobertaForMaskedLM, AutoTokenizer, BertModel, RobertaModel, DistilBertForMaskedLM, DistilBertModel
 import nltk
 
 
@@ -24,6 +24,12 @@ MODEL_CONFIGS = {
         "model_class": RobertaForMaskedLM,
         "tokenizer_class": AutoTokenizer,
         "base_model_class": RobertaModel
+    },
+    "distilbert-base-uncased": {
+        "name": "DistilBERT Base Uncased",
+        "model_class": DistilBertForMaskedLM,
+        "tokenizer_class": AutoTokenizer,
+        "base_model_class": DistilBertModel
     }
 }
 
