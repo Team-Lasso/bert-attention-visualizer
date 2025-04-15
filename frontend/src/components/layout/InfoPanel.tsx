@@ -16,31 +16,52 @@ const InfoPanel: React.FC = () => {
             Pretrained Models
           </h3>
           <p className="text-gray-600 mb-3 text-sm">
-            The visualizer supports various BERT-based models from Hugging Face.
-            Each model has a different number of layers, attention heads, and
-            parameters, offering unique attention patterns.
+            The visualizer supports three transformer models from Hugging Face:
+            <code className="bg-gray-100 px-1 rounded mx-1">BERT Base Uncased</code>,
+            <code className="bg-gray-100 px-1 rounded mx-1">RoBERTa Base</code>, and
+            <code className="bg-gray-100 px-1 rounded mx-1">DistilBERT Base Uncased</code>.
+            Each model has a different architecture, number of layers, and attention patterns
+            that can be explored and compared.
           </p>
         </div>
         <div>
           <h3 className="text-md font-medium text-gray-700 mb-2">
-            BERT Special Tokens
+            Special Tokens
           </h3>
           <p className="text-gray-600 mb-3 text-sm">
-            BERT uses special tokens:{" "}
-            <code className="bg-gray-100 px-1 rounded">[CLS]</code> appears at
-            the beginning of each sequence and is used for classification tasks.{" "}
-            <code className="bg-gray-100 px-1 rounded">[SEP]</code> marks the
-            end of segments.
+            Each model type uses different special tokens:
           </p>
+          <ul className="text-gray-600 mb-3 text-sm list-disc pl-5">
+            <li>
+              <span className="font-medium">BERT & DistilBERT:</span>{" "}
+              <code className="bg-gray-100 px-1 rounded">[CLS]</code> appears at
+              the beginning of each sequence and is used for classification tasks.{" "}
+              <code className="bg-gray-100 px-1 rounded">[SEP]</code> marks the
+              end of segments.
+            </li>
+            <li>
+              <span className="font-medium">RoBERTa:</span>{" "}
+              <code className="bg-gray-100 px-1 rounded">&lt;s&gt;</code> marks the
+              beginning of sequences.{" "}
+              <code className="bg-gray-100 px-1 rounded">&lt;/s&gt;</code> marks the
+              end of sequences.{" "}
+              <code className="bg-gray-100 px-1 rounded">&lt;pad&gt;</code> is used for padding.
+            </li>
+          </ul>
         </div>
         <div>
           <h3 className="text-md font-medium text-gray-700 mb-2">
             Word Masking
           </h3>
           <p className="text-gray-600 mb-3 text-sm">
-            BERT is pre-trained with a masked language modeling objective. When
+            All supported models are pre-trained with a masked language modeling objective. When
             words are masked, the model predicts the original content based on
             the surrounding context.
+          </p>
+          <p className="text-gray-600 mb-3 text-sm">
+            Attention visualizations can reveal how attention patterns change before and after masking.
+            Masked tokens often receive more focused attention as the model attempts to reconstruct
+            the original word, showing how contextual information flows to masked positions.
           </p>
         </div>
         <div>
@@ -69,6 +90,28 @@ const InfoPanel: React.FC = () => {
             Click on any source token to focus on its specific attention
             patterns. This view is particularly useful for visualizing the flow
             of attention across the sentence.
+          </p>
+        </div>
+        <div>
+          <h3 className="text-md font-medium text-gray-700 mb-2">
+            Attention Rollout
+          </h3>
+          <p className="text-gray-600 mb-3 text-sm">
+            Attention Rollout recursively combines attention weights across all layers
+            through matrix multiplication. This accounts for how attention propagates
+            through the network and incorporates the effect of residual connections,
+            providing a more holistic view of token relationships.
+          </p>
+        </div>
+        <div>
+          <h3 className="text-md font-medium text-gray-700 mb-2">
+            Attention Flow
+          </h3>
+          <p className="text-gray-600 mb-3 text-sm">
+            Attention Flow treats the multi-layer attention weights as a graph network
+            and uses maximum flow algorithms to measure information flow between tokens.
+            This method accounts for all possible paths through the network, revealing
+            important connections that might not be apparent in raw attention weights.
           </p>
         </div>
       </div>

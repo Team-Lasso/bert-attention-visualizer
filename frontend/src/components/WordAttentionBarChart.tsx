@@ -489,9 +489,11 @@ const WordAttentionBarChart: React.FC<WordAttentionBarChartProps> = ({ data, wid
           // Add percentage label for each segment if large enough
           // IMPROVED: More selective about which segments get labels to prevent overlap
           if ((value > 0.01 && segmentWidth > 40) || (value > 0.001 && segmentWidth > 50)) {
-            const percentageText = value >= 0.01
-              ? `${(value * 100).toFixed(1)}%`
-              : `${(value * 100).toFixed(2)}%`;
+            const percentageText = value >= 0.1
+              ? `${(value * 100).toFixed(1)}%` // ≥ 10%: 1 decimal
+              : value >= 0.01
+                ? `${(value * 100).toFixed(1)}%` // 1-9.9%: 1 decimal
+                : `${(value * 100).toFixed(2)}%`; // < 1%: 2 decimals
 
             const labelFontSize = Math.max(9, Math.min(11, barHeight * 0.4)); // INCREASED font size
 

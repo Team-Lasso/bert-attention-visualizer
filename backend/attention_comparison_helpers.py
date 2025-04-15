@@ -8,13 +8,18 @@ from routes.tokenize import tokenize_text
 
 async def get_attention_comparison_bert(request: ComparisonRequest):
     """
-    BERT-specific implementation of attention comparison
+    BERT and DistilBERT implementation of attention comparison
     """
     try:
-        print(f"\n=== USING BERT ATTENTION COMPARISON IMPLEMENTATION ===")
+        model_type = "DistilBERT" if "distilbert" in request.model_name.lower() else "BERT"
+        print(f"\n=== USING {model_type} ATTENTION COMPARISON IMPLEMENTATION ===")
         
         # 1. Get the "before" attention data
-        before_attention_request = AttentionRequest(text=request.text, model_name=request.model_name)
+        before_attention_request = AttentionRequest(
+            text=request.text, 
+            model_name=request.model_name,
+            visualization_method=request.visualization_method
+        )
         before_data = (await get_attention_matrices(before_attention_request))["attention_data"]
         
         # 2. Tokenize the text
@@ -46,7 +51,7 @@ async def get_attention_comparison_bert(request: ComparisonRequest):
         
         # HANDLE PUNCTUATION 
         if is_punctuation:
-            print(f"\nUsing BERT punctuation replacement approach")
+            print(f"\nUsing {model_type} punctuation replacement approach")
             
             # Find all occurrences of this punctuation in the original text
             punctuation_positions = [pos for pos, char in enumerate(original_text) if char == selected_token]
@@ -61,8 +66,9 @@ async def get_attention_comparison_bert(request: ComparisonRequest):
                 # We'll use a heuristic based on the token's position
                 
                 # Count non-special tokens before our selected token
+                special_tokens = ["[CLS]", "[SEP]"] # Same special tokens for BERT and DistilBERT
                 non_special_tokens_before = sum(1 for t in tokens[:request.masked_index] 
-                                             if t["text"] not in ["[CLS]", "[SEP]"])
+                                             if t["text"] not in special_tokens)
                 
                 # Select the corresponding punctuation position (or last one if out of range)
                 punct_idx = min(non_special_tokens_before, len(punctuation_positions) - 1)
@@ -76,14 +82,18 @@ async def get_attention_comparison_bert(request: ComparisonRequest):
                 print(f"Replaced text: '{replaced_text}'")
                 
                 # Get the after attention data
-                after_attention_request = AttentionRequest(text=replaced_text, model_name=request.model_name)
+                after_attention_request = AttentionRequest(
+                    text=replaced_text, 
+                    model_name=request.model_name,
+                    visualization_method=request.visualization_method
+                )
                 after_data = (await get_attention_matrices(after_attention_request))["attention_data"]
                 
                 # Return comparison data
                 return {"before_attention": before_data, "after_attention": after_data}
         
-        # HANDLE REGULAR WORDS FOR BERT
-        print(f"\nUsing BERT word replacement approach")
+        # HANDLE REGULAR WORDS FOR BERT/DistilBERT
+        print(f"\nUsing {model_type} word replacement approach")
         words = original_text.split()
         print(f"Words: {words}")
         
@@ -193,7 +203,7 @@ async def get_attention_comparison_bert(request: ComparisonRequest):
             print(f"Could not determine token position, using simple word replacement")
             words = original_text.split()
             
-            # Adjust for special tokens in BERT ([CLS])
+            # Adjust for special tokens in BERT/DistilBERT ([CLS])
             adjusted_index = max(0, request.masked_index - 1)
             word_idx = min(adjusted_index, len(words) - 1)
             
@@ -218,14 +228,18 @@ async def get_attention_comparison_bert(request: ComparisonRequest):
             print(f"Replaced text: '{replaced_text}'")
         
         # Get the after attention data
-        after_attention_request = AttentionRequest(text=replaced_text, model_name=request.model_name)
+        after_attention_request = AttentionRequest(
+            text=replaced_text, 
+            model_name=request.model_name,
+            visualization_method=request.visualization_method
+        )
         after_data = (await get_attention_matrices(after_attention_request))["attention_data"]
         
         # Return comparison data
         return {"before_attention": before_data, "after_attention": after_data}
     
     except Exception as e:
-        print(f"BERT Attention comparison error: {str(e)}")
+        print(f"{model_type} Attention comparison error: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -243,7 +257,11 @@ async def get_attention_comparison_roberta(request: ComparisonRequest):
         print(f"Replacement word: '{request.replacement_word}'")
         
         # Get the "before" attention data
-        before_attention_request = AttentionRequest(text=request.text, model_name=request.model_name)
+        before_attention_request = AttentionRequest(
+            text=request.text, 
+            model_name=request.model_name,
+            visualization_method=request.visualization_method
+        )
         before_data = (await get_attention_matrices(before_attention_request))["attention_data"]
         
         # Tokenize the text
@@ -302,7 +320,11 @@ async def get_attention_comparison_roberta(request: ComparisonRequest):
                 print(f"Replaced text: '{replaced_text}'")
                 
                 # Get the "after" attention data and return
-                after_request = AttentionRequest(text=replaced_text, model_name=request.model_name)
+                after_request = AttentionRequest(
+                    text=replaced_text, 
+                    model_name=request.model_name,
+                    visualization_method=request.visualization_method
+                )
                 after_data = (await get_attention_matrices(after_request))["attention_data"]
                 return {"before_attention": before_data, "after_attention": after_data}
         
@@ -341,7 +363,11 @@ async def get_attention_comparison_roberta(request: ComparisonRequest):
             print(f"Replaced text: '{replaced_text}'")
             
             # Get the "after" attention data
-            after_request = AttentionRequest(text=replaced_text, model_name=request.model_name)
+            after_request = AttentionRequest(
+                text=replaced_text, 
+                model_name=request.model_name,
+                visualization_method=request.visualization_method
+            )
             after_data = (await get_attention_matrices(after_request))["attention_data"]
             
             return {"before_attention": before_data, "after_attention": after_data}
@@ -411,7 +437,11 @@ async def get_attention_comparison_roberta(request: ComparisonRequest):
                 print(f"Replaced text: '{replaced_text}'")
             
             # Get the "after" attention data
-            after_request = AttentionRequest(text=replaced_text, model_name=request.model_name)
+            after_request = AttentionRequest(
+                text=replaced_text, 
+                model_name=request.model_name,
+                visualization_method=request.visualization_method
+            )
             after_data = (await get_attention_matrices(after_request))["attention_data"]
             
             return {"before_attention": before_data, "after_attention": after_data}

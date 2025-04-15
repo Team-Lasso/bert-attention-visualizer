@@ -32,6 +32,7 @@ class MaskPredictionResponse(BaseModel):
 class AttentionRequest(BaseModel):
     text: str
     model_name: str = "bert-base-uncased"
+    visualization_method: str = "raw"  # Options: "raw", "rollout", "flow"
 
 class AttentionHead(BaseModel):
     headIndex: int
@@ -53,6 +54,7 @@ class ComparisonRequest(BaseModel):
     masked_index: int
     replacement_word: str
     model_name: str = "bert-base-uncased"
+    visualization_method: str = "raw"  # Options: "raw", "rollout", "flow"
 
 class AttentionComparisonResponse(BaseModel):
     before_attention: AttentionData

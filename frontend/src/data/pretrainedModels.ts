@@ -23,7 +23,17 @@ export const pretrainedModels: ModelConfig[] = [
     defaultHeads: 12,
     icon: 'cpu'
   },
-  
+  {
+    id: 'distilbert-base-uncased',
+    name: 'DistilBERT Base Uncased',
+    description: 'A distilled version of BERT with fewer parameters and faster inference',
+    parameters: '66M parameters',
+    tokenizer: 'WordPiece',
+    architecture: 'Transformer Encoder',
+    defaultLayers: 6,
+    defaultHeads: 12,
+    icon: 'cpu'
+  },
 ];
 
 export default pretrainedModels; 

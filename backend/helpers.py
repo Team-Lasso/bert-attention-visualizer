@@ -112,6 +112,95 @@ def map_roberta_tokens_to_words(tokens, original_text):
     
     return token_to_word_map
 
+# Helper function to map BERT and DistilBERT tokens to word positions
+def map_bert_tokens_to_words(tokens, original_text):
+    """
+    Maps BERT/DistilBERT tokens to words in the original text.
+    Returns a dictionary mapping token indices to word indices.
+    """
+    # Get the words from the original text
+    words = original_text.split()
+    print(f"Original words: {words}")
+    
+    # Filter out special tokens
+    content_tokens = []
+    for i, token in enumerate(tokens):
+        if token["text"] not in ["[CLS]", "[SEP]", "[PAD]", "[UNK]"]:
+            content_tokens.append((i, token["text"]))
+    
+    print(f"Content tokens: {[t for _, t in content_tokens]}")
+    
+    # Create the mapping
+    token_to_word_map = {}
+    
+    # First approach: direct matching of tokens to words, handling WordPiece tokens
+    word_idx = 0
+    for token_idx, token_text in content_tokens:
+        clean_token = token_text.lower().strip("##")
+        
+        # Check if this is a continuation token (starting with ##)
+        if token_text.startswith("##"):
+            # If it's a continuation, map it to the same word as the previous token
+            if token_idx > 0 and (token_idx - 1) in token_to_word_map:
+                token_to_word_map[token_idx] = token_to_word_map[token_idx - 1]
+                print(f"Continuation token: '{token_text}' -> Word '{words[token_to_word_map[token_idx]]}'")
+            continue
+        
+        # Try to find a match with words
+        while word_idx < len(words):
+            word_lower = words[word_idx].lower()
+            if clean_token in word_lower:
+                token_to_word_map[token_idx] = word_idx
+                print(f"Match: Token '{token_text}' -> Word '{words[word_idx]}' at index {word_idx}")
+                # Only advance to next word if this token is a complete word
+                if clean_token == word_lower:
+                    word_idx += 1
+                break
+            else:
+                word_idx += 1
+                
+            # If we've gone through all words, break
+            if word_idx >= len(words):
+                break
+    
+    # Second approach: Position-based matching for any remaining tokens
+    if len(token_to_word_map) < len(content_tokens):
+        print("Using position-based matching for remaining tokens")
+        
+        # Assign unmapped tokens based on surrounding mapped tokens
+        for token_idx, token_text in content_tokens:
+            if token_idx not in token_to_word_map:
+                # Look for the nearest mapped token before this one
+                prev_idx = token_idx - 1
+                while prev_idx >= 0 and prev_idx not in token_to_word_map:
+                    prev_idx -= 1
+                    
+                # Look for the nearest mapped token after this one
+                next_idx = token_idx + 1
+                while next_idx < len(tokens) and next_idx not in token_to_word_map:
+                    next_idx += 1
+                
+                # Assign to the closest mapped word
+                if prev_idx >= 0 and prev_idx in token_to_word_map:
+                    token_to_word_map[token_idx] = token_to_word_map[prev_idx]
+                    print(f"Position match: Token '{token_text}' -> Word '{words[token_to_word_map[token_idx]]}' (based on previous)")
+                elif next_idx < len(tokens) and next_idx in token_to_word_map:
+                    token_to_word_map[token_idx] = token_to_word_map[next_idx]
+                    print(f"Position match: Token '{token_text}' -> Word '{words[token_to_word_map[token_idx]]}' (based on next)")
+                elif word_idx > 0:
+                    # Fallback to the last word if no nearby tokens are mapped
+                    token_to_word_map[token_idx] = min(word_idx - 1, len(words) - 1)
+                    print(f"Fallback match: Token '{token_text}' -> Word '{words[token_to_word_map[token_idx]]}'")
+    
+    # Print the final mapping
+    print("Final token-to-word mapping:")
+    for token_idx, word_idx in sorted(token_to_word_map.items()):
+        token_text = next((t["text"] for i, t in enumerate(tokens) if i == token_idx), "")
+        if word_idx < len(words):
+            print(f"  Token '{token_text}' (idx {token_idx}) -> Word {word_idx} '{words[word_idx]}'")
+    
+    return token_to_word_map
+
 # Helper function to load models on demand
 def get_model_and_tokenizer(model_name):
     if model_name not in MODEL_CONFIGS:

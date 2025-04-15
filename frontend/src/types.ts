@@ -1,4 +1,3 @@
-
 //! this is not a token, but that's fine ... (should rename as word)
 export interface Token {
   text: string;
@@ -117,4 +116,18 @@ export interface TrainingStatus {
   accuracy?: number;
   elapsedTime?: number;
   estimatedTimeRemaining?: number;
+}
+
+export interface AttentionRequest {
+  text: string;
+  model_name: string;
+  visualization_method?: 'raw' | 'rollout' | 'flow';
+}
+
+export interface ComparisonRequest {
+  text: string;
+  masked_index: number;
+  replacement_word: string;
+  model_name: string;
+  visualization_method?: 'raw' | 'rollout' | 'flow';
 }

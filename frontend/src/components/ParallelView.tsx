@@ -500,13 +500,13 @@ const ParallelView: React.FC<ParallelViewProps> = ({
             if (percentageElement) {
               // Format percentage based on value
               const percentageText =
-                value >= 0.01
-                  ? Math.round(value * 100) + "%" // ≥ 1%: no decimal
-                  : value >= 0.001
-                  ? (value * 100).toFixed(1) + "%" // 0.1% to 0.9%: 1 decimal
-                  : value >= 0.0001
-                  ? (value * 100).toFixed(2) + "%" // 0.01% to 0.09%: 2 decimals
-                  : (value * 100).toFixed(3) + "%"; // < 0.01%: 3 decimals
+                value >= 0.1
+                  ? (value * 100).toFixed(1) + "%" // ≥ 10%: 1 decimal
+                  : value >= 0.01
+                    ? (value * 100).toFixed(1) + "%" // 1-9.9%: 1 decimal
+                    : value >= 0.001
+                      ? (value * 100).toFixed(2) + "%" // 0.1-0.9%: 2 decimals
+                      : (value * 100).toFixed(3) + "%"; // < 0.1%: 3 decimals
 
               // Create percentage badge with improved styling
               const badge = document.createElement("div");
@@ -514,12 +514,10 @@ const ParallelView: React.FC<ParallelViewProps> = ({
                 "font-bold text-center transition-all px-3 py-1 rounded-md";
               badge.style.width = "90%";
               badge.style.color = colors[selectedTokenIndex % colors.length];
-              badge.style.backgroundColor = `${
-                colors[selectedTokenIndex % colors.length]
-              }15`; // Very light background of the same color
-              badge.style.border = `1px solid ${
-                colors[selectedTokenIndex % colors.length]
-              }30`;
+              badge.style.backgroundColor = `${colors[selectedTokenIndex % colors.length]
+                }15`; // Very light background of the same color
+              badge.style.border = `1px solid ${colors[selectedTokenIndex % colors.length]
+                }30`;
               badge.style.opacity = Math.min(
                 1,
                 Math.max(0.85, value * 2)

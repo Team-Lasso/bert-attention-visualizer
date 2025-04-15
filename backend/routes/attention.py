@@ -2,13 +2,14 @@ from fastapi import APIRouter, HTTPException
 from classes import *
 from helpers import *
 from routes.tokenize import tokenize_text
+from attention_processing import process_attention_with_method
 router = APIRouter()
 
 @router.post("", response_model=AttentionResponse)
 async def get_attention_matrices(request: AttentionRequest):
     """Get attention matrices for the input text using the specified model"""
     try:
-        print(f"Processing attention request: text='{request.text}', model={request.model_name}")
+        print(f"Processing attention request: text='{request.text}', model={request.model_name}, method={request.visualization_method}")
         
         # First tokenize the text using the same function that the /tokenize endpoint uses
         # to ensure consistency
@@ -29,7 +30,7 @@ async def get_attention_matrices(request: AttentionRequest):
         base_model_key = f"{model_name}_base"
         if base_model_key not in models:
             print(f"Loading base model {model_name}...")
-            models[base_model_key] = base_model_class.from_pretrained(model_name)
+            models[base_model_key] = base_model_class.from_pretrained(model_name, attn_implementation="eager")
             if torch.cuda.is_available():
                 models[base_model_key] = models[base_model_key].cuda()
             models[base_model_key].eval()
@@ -46,9 +47,16 @@ async def get_attention_matrices(request: AttentionRequest):
                 return_tensors="pt",
                 return_attention_mask=True
             )
+            
+            # Map RoBERTa tokens to words for better visualization
+            token_to_word_map = map_roberta_tokens_to_words(tokens, request.text)
         else:
+            # For BERT and DistilBERT
             text = f"[CLS] {request.text} [SEP]"
             encoding = tokenizer(text, return_tensors="pt")
+            
+            # Map BERT/DistilBERT tokens to words for better visualization
+            token_to_word_map = map_bert_tokens_to_words(tokens, request.text)
         
         if torch.cuda.is_available():
             encoding = {k: v.cuda() for k, v in encoding.items()}
@@ -73,6 +81,10 @@ async def get_attention_matrices(request: AttentionRequest):
         attention_matrices = outputs.attentions
         print(f"Got attention matrices for {len(attention_matrices)} layers")
         
+        # Process attention using the specified method
+        if request.visualization_method != "raw":
+            print(f"Processing attention with method: {request.visualization_method}")
+
         # Convert attention matrices to the expected response format
         layers = []
         for layer_idx, layer_attention in enumerate(attention_matrices):
@@ -96,8 +108,23 @@ async def get_attention_matrices(request: AttentionRequest):
                 "layerIndex": layer_idx,
                 "heads": heads
             })
-        
+            
         print(f"Processed {len(layers)} layers with {num_heads} heads each")
+        
+        # Process with selected visualization method
+        if request.visualization_method != "raw":
+            processed_layers = process_attention_with_method(
+                attention_matrices, 
+                method=request.visualization_method,
+                debug=False
+            )
+            # Replace the layers with the processed ones
+            layers = processed_layers
+            
+        # Add token-to-word mapping to the response
+        for i, token in enumerate(tokens):
+            if i in token_to_word_map:
+                token["wordIndex"] = token_to_word_map[i]
             
         # Return complete attention data
         attention_data = {
