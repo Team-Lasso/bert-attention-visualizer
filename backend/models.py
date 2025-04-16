@@ -1,4 +1,4 @@
-from transformers import BertForMaskedLM, RobertaForMaskedLM, AutoTokenizer, BertModel, RobertaModel, DistilBertForMaskedLM, DistilBertModel
+from transformers import BertForMaskedLM, RobertaForMaskedLM, AutoTokenizer, BertModel, RobertaModel, DistilBertForMaskedLM, DistilBertModel, AutoModelForMaskedLM
 import nltk
 
 
@@ -30,8 +30,27 @@ MODEL_CONFIGS = {
         "model_class": DistilBertForMaskedLM,
         "tokenizer_class": AutoTokenizer,
         "base_model_class": DistilBertModel
+    },
+    "EdwinXhen/TinyBert_6Layer_MLM": {
+        "name": "TinyBERT 6 Layer",
+        "model_class": "custom",
+        "tokenizer_class": AutoTokenizer,
+        "base_model_class": BertModel
     }
 }
 
 models = {}
 tokenizers = {}
+
+def load_model(model_type, debug=False):
+    if model_type.lower() == "custom" or model_type == "EdwinXhen/TinyBert_6Layer_MLM":
+        # Load custom model from Hugging Face repository
+        custom_repo = "EdwinXhen/TinyBert_6Layer_MLM"
+        if debug:
+            print(f"[DEBUG] Loading custom model from HuggingFace repository: {custom_repo}")
+        tokenizer = AutoTokenizer.from_pretrained(custom_repo)
+        model = AutoModelForMaskedLM.from_pretrained(custom_repo, output_attentions=True)
+        return tokenizer, model
+    # Handle other models with existing logic
+    # This is a placeholder for the existing model loading logic
+    return None, None

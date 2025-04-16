@@ -34,6 +34,17 @@ export const pretrainedModels: ModelConfig[] = [
     defaultHeads: 12,
     icon: 'cpu'
   },
+  {
+    id: 'EdwinXhen/TinyBert_6Layer_MLM',
+    name: 'TinyBERT 6 Layer',
+    description: 'Compressed BERT model with knowledge distillation, 6 layers, optimized for masked language modeling',
+    parameters: '67M parameters',
+    tokenizer: 'WordPiece',
+    architecture: 'Transformer Encoder',
+    defaultLayers: 6,
+    defaultHeads: 12,
+    icon: 'cpu'
+  },
 ];
 
 export default pretrainedModels; 
