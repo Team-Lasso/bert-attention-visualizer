@@ -9,11 +9,12 @@ router = APIRouter()
 async def get_attention_matrices(request: AttentionRequest):
     """Get attention matrices for the input text using the specified model"""
     try:
-        print(f"Processing attention request: text='{request.text}', model={request.model_name}, method={request.visualization_method}")
+        debug = request.debug if hasattr(request, 'debug') else False
+        print(f"Processing attention request: text='{request.text}', model={request.model_name}, method={request.visualization_method}, debug={debug}")
         
         # First tokenize the text using the same function that the /tokenize endpoint uses
         # to ensure consistency
-        tokenizer_response = await tokenize_text(TokenizeRequest(text=request.text, model_name=request.model_name))
+        tokenizer_response = await tokenize_text(TokenizeRequest(text=request.text, model_name=request.model_name, debug=debug))
         tokens = tokenizer_response["tokens"]
         print(f"Tokenized into {len(tokens)} tokens")
         
@@ -24,17 +25,35 @@ async def get_attention_matrices(request: AttentionRequest):
             raise HTTPException(status_code=400, detail=f"Model {model_name} not supported")
             
         config = MODEL_CONFIGS[model_name]
-        base_model_class = config["base_model_class"]
         
-        # Check if we already have a base model cached
-        base_model_key = f"{model_name}_base"
-        if base_model_key not in models:
-            print(f"Loading base model {model_name}...")
-            models[base_model_key] = base_model_class.from_pretrained(model_name, attn_implementation="eager")
-            if torch.cuda.is_available():
-                models[base_model_key] = models[base_model_key].cuda()
-            models[base_model_key].eval()
-            print(f"Base model {model_name} loaded")
+        # Handle custom model differently if needed
+        if config["model_class"] == "custom":
+            # For custom models, we need special handling
+            base_model_key = f"{model_name}_base"
+            if base_model_key not in models:
+                # For TinyBERT, we use the same model with different configuration
+                _, tokenizer = get_model_and_tokenizer(model_name, debug)
+                custom_repo = "EdwinXhen/TinyBert_6Layer_MLM"
+                print(f"Loading base model from {custom_repo} for attention visualization...")
+                from transformers import AutoModel
+                models[base_model_key] = AutoModel.from_pretrained(custom_repo, attn_implementation="eager", output_attentions=True)
+                if torch.cuda.is_available():
+                    models[base_model_key] = models[base_model_key].cuda()
+                models[base_model_key].eval()
+                print(f"Base model {model_name} loaded")
+        else:
+            # Standard model loading
+            base_model_class = config["base_model_class"]
+            
+            # Check if we already have a base model cached
+            base_model_key = f"{model_name}_base"
+            if base_model_key not in models:
+                print(f"Loading base model {model_name}...")
+                models[base_model_key] = base_model_class.from_pretrained(model_name, attn_implementation="eager")
+                if torch.cuda.is_available():
+                    models[base_model_key] = models[base_model_key].cuda()
+                models[base_model_key].eval()
+                print(f"Base model {model_name} loaded")
         
         model = models[base_model_key]
         tokenizer = tokenizers[request.model_name]

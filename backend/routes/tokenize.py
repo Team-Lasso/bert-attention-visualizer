@@ -8,7 +8,8 @@ router = APIRouter()
 async def tokenize_text(request: TokenizeRequest):
     """Tokenize input text using the specified model's tokenizer"""
     try:
-        _, tokenizer = get_model_and_tokenizer(request.model_name)
+        debug = request.debug if hasattr(request, 'debug') else False
+        _, tokenizer = get_model_and_tokenizer(request.model_name, debug)
         
         # The text might include punctuation - let the tokenizer handle it properly
         if "roberta" in request.model_name:
@@ -27,7 +28,7 @@ async def tokenize_text(request: TokenizeRequest):
             # Clean the tokens to remove the leading 'Ġ' character from RoBERTa tokens
             tokens = [clean_roberta_token(token) for token in tokens]
         else:
-            # For BERT and DistilBERT, add special tokens and tokenize
+            # For BERT, DistilBERT, and TinyBERT, add special tokens and tokenize
             text = f"[CLS] {request.text} [SEP]"
             tokens = tokenizer.tokenize(text)
         

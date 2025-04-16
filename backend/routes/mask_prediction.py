@@ -18,7 +18,8 @@ async def predict_masked_token(request: MaskPredictionRequest, x_token_to_mask: 
         print(f"Token to mask header: '{x_token_to_mask}'")
         print(f"Explicit masked text header: '{x_explicit_masked_text}'")
         
-        model, tokenizer = get_model_and_tokenizer(request.model_name)
+        debug = request.debug if hasattr(request, 'debug') else False
+        model, tokenizer = get_model_and_tokenizer(request.model_name, debug)
         
         # For RoBERTa, use explicit masked text if provided
         if "roberta" in request.model_name and x_explicit_masked_text:
@@ -78,7 +79,7 @@ async def predict_masked_token(request: MaskPredictionRequest, x_token_to_mask: 
             return MaskPredictionResponse(predictions=predictions_list)
 
         # Get tokens from the original text using the tokenize endpoint for consistency
-        tokenizer_response = await tokenize_text(TokenizeRequest(text=request.text, model_name=request.model_name))
+        tokenizer_response = await tokenize_text(TokenizeRequest(text=request.text, model_name=request.model_name, debug=debug))
         tokens = tokenizer_response["tokens"]
         
         print(f"Tokenizer response: {len(tokens)} tokens")

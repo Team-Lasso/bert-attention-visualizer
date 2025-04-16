@@ -202,17 +202,26 @@ def map_bert_tokens_to_words(tokens, original_text):
     return token_to_word_map
 
 # Helper function to load models on demand
-def get_model_and_tokenizer(model_name):
+def get_model_and_tokenizer(model_name, debug=False):
     if model_name not in MODEL_CONFIGS:
         raise HTTPException(status_code=400, detail=f"Model {model_name} not supported")
     
     if model_name not in models:
         print(f"Loading {model_name}...")
         config = MODEL_CONFIGS[model_name]
-        models[model_name] = config["model_class"].from_pretrained(model_name)
-        tokenizers[model_name] = config["tokenizer_class"].from_pretrained(model_name)
+        
+        # Check if this is a custom model that requires special loading
+        if config["model_class"] == "custom" or model_name == "EdwinXhen/TinyBert_6Layer_MLM":
+            # Use the custom model loading function
+            tokenizers[model_name], models[model_name] = load_model(model_name, debug)
+        else:
+            # Standard model loading
+            models[model_name] = config["model_class"].from_pretrained(model_name)
+            tokenizers[model_name] = config["tokenizer_class"].from_pretrained(model_name)
+            
         if torch.cuda.is_available():
             models[model_name] = models[model_name].cuda()
+            
         models[model_name].eval()
         print(f"Model {model_name} loaded")
     

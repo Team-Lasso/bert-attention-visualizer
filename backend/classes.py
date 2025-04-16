@@ -1,9 +1,10 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 class TokenizeRequest(BaseModel):
     text: str
     model_name: str = "bert-base-uncased"
+    debug: Optional[bool] = False
 
 class Token(BaseModel):
     text: str
@@ -25,6 +26,7 @@ class MaskPredictionRequest(BaseModel):
     mask_index: int
     model_name: str = "bert-base-uncased"
     top_k: int = 10
+    debug: Optional[bool] = False
 
 class MaskPredictionResponse(BaseModel):
     predictions: List[WordPrediction]
@@ -33,6 +35,7 @@ class AttentionRequest(BaseModel):
     text: str
     model_name: str = "bert-base-uncased"
     visualization_method: str = "raw"  # Options: "raw", "rollout", "flow"
+    debug: Optional[bool] = False
 
 class AttentionHead(BaseModel):
     headIndex: int
