@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 
 interface SentenceInputProps {
@@ -15,13 +15,23 @@ const SentenceInput: React.FC<SentenceInputProps> = ({
   initialValue = "",
 }) => {
   const [sentence, setSentence] = useState(initialValue);
+  const [wordCount, setWordCount] = useState(0);
+  const lastValidInput = useRef(initialValue);
 
   // Update local state when initialValue changes
   useEffect(() => {
     if (initialValue) {
       setSentence(initialValue);
+      // Count words in initial value
+      const count = countWords(initialValue);
+      setWordCount(count);
+      lastValidInput.current = initialValue;
     }
   }, [initialValue]);
+
+  const countWords = (text: string): number => {
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,16 +41,32 @@ const SentenceInput: React.FC<SentenceInputProps> = ({
   };
 
   // Custom change handler enforcing a word limit
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const inputValue = e.target.value;
+
+    // If deleting text, always allow it
+    if (inputValue.length < sentence.length) {
+      const newCount = countWords(inputValue);
+      setSentence(inputValue);
+      setWordCount(newCount);
+      lastValidInput.current = inputValue;
+      return;
+    }
+
     // Split the value by whitespace and filter out any empty strings
     const words = inputValue.split(/\s+/).filter(Boolean);
+    const currentWordCount = words.length;
 
-    if (words.length <= MAX_WORDS) {
+    // Only update if within the limit
+    if (currentWordCount <= MAX_WORDS) {
       setSentence(inputValue);
+      setWordCount(currentWordCount);
+      lastValidInput.current = inputValue;
     } else {
-      // Optionally, automatically trim to the max word count
-      setSentence(words.slice(0, MAX_WORDS).join(" "));
+      // If exceeded, keep the last valid input
+      setSentence(lastValidInput.current);
+      // Optional: Show feedback to user that limit is reached
+      // e.g., flash the word count or show a temporary message
     }
   };
 
@@ -49,26 +75,35 @@ const SentenceInput: React.FC<SentenceInputProps> = ({
       <h3 className="text-lg font-medium text-gray-900 mb-2">
         Enter Your Own Sentence
       </h3>
-      <p className="text-sm text-gray-500 mb-3">Type a sentence to analyze</p>
+      <p className="text-sm text-gray-500 mb-3">Type a paragraph to analyze (max 30 words)</p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="relative">
-          <input
-            type="text"
+          <textarea
             value={sentence}
             onChange={handleChange}
             placeholder="E.g., The cat sat on the mat"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-none"
             disabled={isLoading}
+            rows={3}
           />
-          {sentence && (
-            <button
-              type="button"
-              onClick={() => setSentence("")}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              ×
-            </button>
-          )}
+          <div className="flex justify-between">
+            <span className={`text-xs ${wordCount >= MAX_WORDS ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+              {wordCount}/{MAX_WORDS} words
+            </span>
+            {sentence && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSentence("");
+                  setWordCount(0);
+                  lastValidInput.current = "";
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
         <button
           type="submit"
