@@ -1,11 +1,29 @@
 # BERT Attention Visualizer
 
-A tool for visualizing attention patterns in BERT and RoBERTa models.
+A tool for visualizing attention patterns in BERT, RoBERTa, DistilBERT, and TinyBERT models.
 
 ## Project Structure
 
 - `frontend/`: React application with Vite for the UI
 - `backend/`: FastAPI Python service for model processing
+
+## Features
+
+- **Multiple Transformer Models**: Supports BERT, RoBERTa, DistilBERT, and TinyBERT models
+- **Interactive Visualizations**: Matrix view and parallel view for attention patterns
+- **Advanced Attention Analysis**: Raw attention, attention rollout, and attention flow visualization methods
+- **Word Masking & Prediction**: Analyze how models predict masked tokens
+- **Comparative Analysis**: Compare attention patterns before and after word replacement
+
+## Attention Visualization Methods
+
+The tool supports three different methods for visualizing attention:
+
+1. **Raw Attention**: Shows the direct attention weights from each attention head, exactly as output by the model.
+
+2. **Attention Rollout**: Recursively combines attention weights across all layers through matrix multiplication. This accounts for how attention propagates through the network and incorporates the effect of residual connections, providing a more holistic view of token relationships.
+
+3. **Attention Flow**: Treats the multi-layer attention weights as a graph network and uses maximum flow algorithms to measure information flow between tokens. This method accounts for all possible paths through the network, revealing important connections that might not be apparent in raw attention weights.
 
 ## CI/CD with GitHub Actions
 
@@ -83,12 +101,16 @@ uvicorn app:app --reload
 3. Enter a sentence to analyze
 4. Explore attention patterns across different layers and heads
 5. Try masking a token by clicking on it to see the model's predictions
+6. Switch between visualization methods (raw, rollout, flow) to gain different insights
+7. Compare attention patterns before and after word replacement
 
 ## Supported Models
 
 Currently, the following models are supported:
 
-- BERT Base Uncased
-- RoBERTa Base
+- `bert-base-uncased`: BERT Base Uncased (12 layers, 768 hidden dimensions)
+- `roberta-base`: RoBERTa Base (12 layers, 768 hidden dimensions)
+- `distilbert-base-uncased`: DistilBERT Base Uncased (6 layers, 768 hidden dimensions)
+- `EdwinXhen/TinyBert_6Layer_MLM`: TinyBERT 6 Layer (6 layers, knowledge distilled from BERT)
 
-Additional models can be added by modifying the `MODEL_CONFIGS` in the backend's `app.py`.
+Additional models can be added by modifying the `MODEL_CONFIGS` in the backend's `models.py`.
