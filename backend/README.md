@@ -15,7 +15,7 @@ Check out the configuration reference at https://huggingface.co/docs/hub/spaces-
 
 # BERT Attention Visualizer API
 
-This is the backend API for the BERT Attention Visualizer, a tool that allows you to visualize attention patterns in BERT and RoBERTa models.
+This is the backend API for the BERT Attention Visualizer, a tool that allows you to visualize attention patterns in BERT, RoBERTa, DistilBERT, and TinyBERT models.
 
 ## API Endpoints
 
@@ -157,7 +157,8 @@ Request body:
 ```json
 {
   "text": "The cat sat on the mat",
-  "model_name": "bert-base-uncased"
+  "model_name": "bert-base-uncased",
+  "visualization_method": "raw"
 }
 ```
 
@@ -203,7 +204,8 @@ Request body:
   "text": "The cat sat on the mat",
   "masked_index": 2,
   "replacement_word": "dog",
-  "model_name": "bert-base-uncased"
+  "model_name": "bert-base-uncased",
+  "visualization_method": "raw"
 }
 ```
 
@@ -222,8 +224,20 @@ Response:
 
 ## Available Models
 
-- `bert-base-uncased`: BERT Base Uncased model
-- `roberta-base`: RoBERTa Base model
+- `bert-base-uncased`: BERT Base Uncased model (12 layers, 768 hidden dimensions)
+- `roberta-base`: RoBERTa Base model (12 layers, 768 hidden dimensions)
+- `distilbert-base-uncased`: DistilBERT Base Uncased model (6 layers, 768 hidden dimensions)
+- `EdwinXhen/TinyBert_6Layer_MLM`: TinyBERT 6 Layer model (6 layers, knowledge distilled from BERT)
+
+## Attention Visualization Methods
+
+The API supports three attention visualization methods, which can be specified using the `visualization_method` parameter in the `/attention` and `/attention_comparison` endpoints:
+
+- `raw`: Shows the raw attention weights from each attention head. This is the direct output from the model's attention mechanism.
+
+- `rollout`: Implements Attention Rollout, which recursively combines attention weights across all layers through matrix multiplication. This accounts for how attention propagates through the network and incorporates the effect of residual connections, providing a more holistic view of token relationships.
+
+- `flow`: Implements Attention Flow, which treats the multi-layer attention weights as a graph network and uses maximum flow algorithms to measure information flow between tokens. This method accounts for all possible paths through the network, revealing important connections that might not be apparent in raw attention weights.
 
 ## RoBERTa Token Handling
 
