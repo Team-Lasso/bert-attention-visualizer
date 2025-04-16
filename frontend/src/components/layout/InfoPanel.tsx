@@ -16,10 +16,11 @@ const InfoPanel: React.FC = () => {
             Pretrained Models
           </h3>
           <p className="text-gray-600 mb-3 text-sm">
-            The visualizer supports three transformer models from Hugging Face:
+            The visualizer supports four transformer models from Hugging Face:
             <code className="bg-gray-100 px-1 rounded mx-1">BERT Base Uncased</code>,
-            <code className="bg-gray-100 px-1 rounded mx-1">RoBERTa Base</code>, and
-            <code className="bg-gray-100 px-1 rounded mx-1">DistilBERT Base Uncased</code>.
+            <code className="bg-gray-100 px-1 rounded mx-1">RoBERTa Base</code>,
+            <code className="bg-gray-100 px-1 rounded mx-1">DistilBERT Base Uncased</code>, and
+            <code className="bg-gray-100 px-1 rounded mx-1">TinyBERT 6 Layer</code>.
             Each model has a different architecture, number of layers, and attention patterns
             that can be explored and compared.
           </p>
@@ -33,7 +34,7 @@ const InfoPanel: React.FC = () => {
           </p>
           <ul className="text-gray-600 mb-3 text-sm list-disc pl-5">
             <li>
-              <span className="font-medium">BERT & DistilBERT:</span>{" "}
+              <span className="font-medium">BERT, DistilBERT & TinyBERT:</span>{" "}
               <code className="bg-gray-100 px-1 rounded">[CLS]</code> appears at
               the beginning of each sequence and is used for classification tasks.{" "}
               <code className="bg-gray-100 px-1 rounded">[SEP]</code> marks the
