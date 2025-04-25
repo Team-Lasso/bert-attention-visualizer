@@ -36,6 +36,7 @@ const SentenceInputSection: React.FC<SentenceInputSectionProps> = ({
         onSentenceSubmit={onSentenceSubmit} //this is the function that is passed to the SentenceInput component, it is called when the user inputs a sentence
         isLoading={isProcessing}
         initialValue={inputValue}
+        hideTitle={true}
       />
     </div>
   );

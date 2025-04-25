@@ -4,6 +4,7 @@ import {
   WordPrediction,
   Token,
 } from "../types";
+import { MaskPrediction } from "../utils/interfaces";
 
 // Generate sample predictions for a masked token
 const generateSamplePredictions = (

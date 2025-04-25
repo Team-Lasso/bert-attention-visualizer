@@ -138,19 +138,24 @@ const WordAttentionBarChart: React.FC<WordAttentionBarChartProps> = ({ data, wid
     const uniqueTokens = new Set(validData.targetWords);
     const hasStackedData = uniqueTokens.size < validData.targetWords.length;
 
-    if (hasStackedData) {
-      // Handle stacked bar chart logic
-      renderStackedBarChart();
-    } else {
-      // Handle regular bar chart
-      renderRegularBarChart();
-    }
+    // Instead of using stacked bars for duplicate tokens, we'll make each token unique
+    // by adding its position index when needed
+    const uniqueTokenData = {
+      ...validData,
+      targetWords: validData.targetWords.map((word, index) => {
+        // Add position index to all tokens
+        return `${word} (${index})`;
+      })
+    };
 
-    function renderRegularBarChart() {
+    // Always use regular bar chart with our modified data that makes each token unique
+    renderRegularBarChart(uniqueTokenData);
+
+    function renderRegularBarChart(data = validData) {
       // Create data with indices for sorting
-      const indexedData = validData.attentionValues.map((value, i) => ({
+      const indexedData = data.attentionValues.map((value, i) => ({
         value: Math.max(value, 0.00001), // Ensure minimum value for log scale
-        word: validData.targetWords[i] || '[UNKNOWN]', // Ensure word is never undefined
+        word: data.targetWords[i] || '[UNKNOWN]', // Ensure word is never undefined
         index: i
       }));
 
@@ -350,6 +355,7 @@ const WordAttentionBarChart: React.FC<WordAttentionBarChartProps> = ({ data, wid
         .attr("opacity", 1);
     }
 
+    // Original renderStackedBarChart function can stay but won't be used
     function renderStackedBarChart() {
       // Process data to create stacked format
       // Group by token name first
