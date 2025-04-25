@@ -384,3 +384,21 @@ export const getAttentionComparison = async (
     throw error;
   }
 };
+
+/**
+ * Fetch attention data for a sentence using the specified model - 
+ * an alias for getAttentionData with more consistent naming
+ */
+export const fetchAttentionData = async (
+  params: {
+    text: string;
+    model_name: string;
+    visualization_method?: 'raw' | 'rollout' | 'flow';
+  }
+): Promise<AttentionData> => {
+  return getAttentionData(
+    params.text,
+    params.model_name,
+    params.visualization_method || 'raw'
+  );
+};

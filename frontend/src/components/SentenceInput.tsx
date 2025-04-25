@@ -5,6 +5,7 @@ interface SentenceInputProps {
   onSentenceSubmit: (sentence: string) => void;
   isLoading: boolean;
   initialValue?: string;
+  hideTitle?: boolean;
 }
 
 const MAX_WORDS = 30;
@@ -13,6 +14,7 @@ const SentenceInput: React.FC<SentenceInputProps> = ({
   onSentenceSubmit,
   isLoading,
   initialValue = "",
+  hideTitle = false,
 }) => {
   const [sentence, setSentence] = useState(initialValue);
   const [wordCount, setWordCount] = useState(0);
@@ -72,10 +74,12 @@ const SentenceInput: React.FC<SentenceInputProps> = ({
 
   return (
     <div className="flex flex-col">
-      <h3 className="text-lg font-medium text-gray-900 mb-2">
-        Enter Your Own Sentence
-      </h3>
-      <p className="text-sm text-gray-500 mb-3">Type a paragraph to analyze (max 30 words)</p>
+      {!hideTitle && (
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          Enter Your Own Sentence
+        </h3>
+      )}
+      <p className="text-sm text-gray-500 mb-3">Type a sentence or paragraph to analyze (max 30 words)</p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="relative">
           <textarea

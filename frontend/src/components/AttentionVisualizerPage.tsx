@@ -1,11 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import useAttentionVisualizer from "../hooks/useAttentionVisualizer";
 import { SampleData } from "../types";
 import { pretrainedModels } from "../data/pretrainedModels";
 
 // Layout Components
 import AppHeader from "./layout/AppHeader";
-import InfoPanel from "./layout/InfoPanel";
 
 // Model Components
 import PretrainedModelSelector from "./PretrainedModelSelector";
@@ -46,7 +45,7 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
     selectedLayer,
     selectedHead,
     activeView,
-    currentHeadData,
+    attentionDataForCurrentView,
     setSelectedLayer,
     setSelectedHead,
     switchView,
@@ -80,21 +79,45 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
     // Visualization method
     visualizationMethod,
     handleVisualizationMethodChange,
+
+    // Layer-head summary
+    showLayerHeadSummary,
+    toggleLayerHeadSummary,
+
+    // New average attention toggle functionality
+    showAverageAttention,
+    toggleAverageAttention,
+
+    // New hide special tokens toggle functionality
+    hideSpecialTokens,
+    toggleHideSpecialTokens,
+
+    // New token visibility toggle functionality
+    tokenVisibility,
+    toggleTokenVisibility,
   } = useAttentionVisualizer(datasets);
+
+  // Matrix percentage visibility state
+  const [showPercentages, setShowPercentages] = useState<boolean>(true);
+
+  const togglePercentages = () => {
+    setShowPercentages(prev => !prev);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50">
-      <div className="flex flex-col space-y-6 max-w-6xl mx-auto p-6">
-        {/* Header */}
-        <AppHeader
-          currentModelName={currentModel?.name || "No model selected"}
-          showModelSelector={showModelSelector}
-          onToggleModelSelector={() => setShowModelSelector(!showModelSelector)}
-        />
+      {/* Header */}
+      <AppHeader
+        currentModelName={currentModel?.name || "No model selected"}
+        showModelSelector={showModelSelector}
+        onToggleModelSelector={() => setShowModelSelector(!showModelSelector)}
+      />
 
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-6 py-6">
         {/* Model Selector */}
         {showModelSelector && (
-          <div className="animate-fadeIn">
+          <div className="animate-fadeIn mb-6">
             <PretrainedModelSelector
               availableModels={pretrainedModels}
               onModelSelect={handleModelSelect}
@@ -118,6 +141,7 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
             hasUserInput={hasUserInput}
             onMaskWord={handleMaskWord}
             maskedTokenIndex={maskedTokenIndex}
+            tokenVisibility={tokenVisibility}
           />
 
           <PredictionsSection
@@ -133,7 +157,7 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
 
         {/* Visualization Section */}
         {hasUserInput && (
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 gap-6 mt-6">
             <VisualizationControls
               selectedLayer={selectedLayer}
               selectedHead={selectedHead}
@@ -146,6 +170,17 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
               view="single"
               visualizationMethod={visualizationMethod}
               onVisualizationMethodChange={handleVisualizationMethodChange}
+              showLayerHeadSummary={showLayerHeadSummary}
+              onToggleLayerHeadSummary={toggleLayerHeadSummary}
+              showAverageAttention={showAverageAttention}
+              onToggleAverageAttention={toggleAverageAttention}
+              showPercentages={showPercentages}
+              onTogglePercentages={togglePercentages}
+              tokenVisibility={tokenVisibility}
+              onToggleTokenVisibility={toggleTokenVisibility}
+              modelType={selectedModelId || "bert-base-uncased"}
+              hideSpecialTokens={hideSpecialTokens}
+              onToggleHideSpecialTokens={toggleHideSpecialTokens}
             />
 
             {/* Show either comparison view or regular view based on state */}
@@ -165,10 +200,7 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
             ) : (
               <VisualizationDisplay
                 tokens={tokensWithIndex}
-                currentHead={currentHeadData ? {
-                  ...currentHeadData,
-                  headIndex: selectedHead
-                } : {
+                currentHead={attentionDataForCurrentView || {
                   headIndex: selectedHead,
                   attention: []
                 }}
@@ -178,13 +210,19 @@ const AttentionVisualizerPage: React.FC<AttentionVisualizerPageProps> = ({
                 activeView={activeView}
                 wordAttentionData={wordAttentionData}
                 visualizationMethod={visualizationMethod}
+                showLayerHeadSummary={showLayerHeadSummary}
+                showAverageAttention={showAverageAttention}
+                showPercentages={showPercentages}
+                tokenVisibility={tokenVisibility}
+                attentionData={currentData}
+                onSelectLayerHead={(layer, head) => {
+                  setSelectedLayer(layer);
+                  setSelectedHead(head);
+                }}
               />
             )}
           </div>
         )}
-
-        {/* Info Panel */}
-        <InfoPanel />
       </div>
     </div>
   );

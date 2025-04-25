@@ -7,6 +7,25 @@ interface WordMaskingSectionProps {
   onMaskWord: (tokenIndex: number) => void;
   maskedTokenIndex: number | null;
   hasUserInput?: boolean;
+  tokenVisibility?: {
+    cls: boolean;
+    sep: boolean;
+    s_token: boolean;
+    _s_token: boolean;
+    period: boolean;
+    pad: boolean;
+    comma?: boolean;
+    exclamation?: boolean;
+    question?: boolean;
+    semicolon?: boolean;
+    colon?: boolean;
+    apostrophe?: boolean;
+    quote?: boolean;
+    parentheses?: boolean;
+    dash?: boolean;
+    hyphen?: boolean;
+    ellipsis?: boolean;
+  };
 }
 
 const WordMaskingSection: React.FC<WordMaskingSectionProps> = ({
@@ -14,6 +33,7 @@ const WordMaskingSection: React.FC<WordMaskingSectionProps> = ({
   onMaskWord,
   maskedTokenIndex,
   hasUserInput = false,
+  tokenVisibility = { cls: true, sep: true, s_token: true, _s_token: true, period: true, pad: true },
 }) => {
   return (
     <div className="bg-white rounded-xl shadow-md p-5 border border-indigo-100 min-h-[300px] flex flex-col">
@@ -28,6 +48,8 @@ const WordMaskingSection: React.FC<WordMaskingSectionProps> = ({
           tokens={tokens}
           onMaskWord={onMaskWord}
           maskedTokenIndex={maskedTokenIndex}
+          tokenVisibility={tokenVisibility}
+          hideTitle={true}
         />
       ) : (
         <div className="text-center p-8 bg-gray-50 rounded-lg flex-grow flex items-center justify-center">

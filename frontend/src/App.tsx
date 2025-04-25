@@ -1,12 +1,19 @@
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AttentionVisualizerPage from "./components/AttentionVisualizerPage";
-// Remove the import for sample datasets
-// import { sampleDatasets } from "./data/sampleData";
+import AboutPage from "./components/AboutPage";
+import ModelComparisonPage from "./components/ModelComparisonPage";
+
 
 function App() {
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Start with an empty array instead of sample datasets */}
-      <AttentionVisualizerPage datasets={[]} />
+      <Router>
+        <Routes>
+          <Route path="/" element={<AttentionVisualizerPage datasets={[]} />} />
+          <Route path="/compare" element={<ModelComparisonPage />} />
+          <Route path="/about" element={<AboutPage />} />
+        </Routes>
+      </Router>
     </div>
   );
 }
