@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SampleData } from "../types";
 import { useModelSelection } from "./useModelSelection";
 import { useDatasetManager } from "./useDatasetManager";
@@ -153,6 +153,14 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
     index,
   })) || [];
 
+  // Add state for layer-head summary view
+  const [showLayerHeadSummary, setShowLayerHeadSummary] = useState(false);
+
+  // Function to toggle the layer-head summary view
+  const toggleLayerHeadSummary = useCallback(() => {
+    setShowLayerHeadSummary(prev => !prev);
+  }, []);
+
   return {
     // dataset manager
     ...datasetManager,
@@ -180,10 +188,25 @@ const useAttentionVisualizer = (initialDatasets: SampleData[]) => {
     // combine the functionality and calculation properties
     currentModel: modelSelection.currentModel,
     wordAttentionData,
-    tokensWithIndex,
+    tokensWithIndex: visualizationControls.filteredTokens,
     handleLoadModel,
     handleSentenceSubmit,
     currentSentence,
+
+    // Add layer-head summary related state and functions
+    showLayerHeadSummary,
+    toggleLayerHeadSummary,
+
+    // Add average attention related state and functions
+    showAverageAttention: visualizationControls.showAverageAttention,
+    toggleAverageAttention: visualizationControls.toggleAverageAttention,
+
+    // Access to the attention data for current view (normal or averaged)
+    attentionDataForCurrentView: visualizationControls.attentionDataForCurrentView,
+
+    // Special token hiding feature
+    hideSpecialTokens: visualizationControls.hideSpecialTokens,
+    toggleHideSpecialTokens: visualizationControls.toggleHideSpecialTokens,
   };
 };
 
