@@ -1,1 +1,10 @@
 node_modules
+*.private.*
+
+tmp/
+
+scripts/debug/
+
+docs/.agent/
+
+frontend/dist/

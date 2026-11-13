@@ -1,6 +1,6 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import AttentionVisualizerPage from "./components/AttentionVisualizerPage";
-import AboutPage from "./components/AboutPage";
+import GuidePage from "./components/GuidePage";
 import ModelComparisonPage from "./components/ModelComparisonPage";
 
 
@@ -11,7 +11,8 @@ function App() {
         <Routes>
           <Route path="/" element={<AttentionVisualizerPage datasets={[]} />} />
           <Route path="/compare" element={<ModelComparisonPage />} />
-          <Route path="/about" element={<AboutPage />} />
+          <Route path="/about" element={<Navigate to="/guide" replace />} />
+          <Route path="/guide" element={<GuidePage />} />
         </Routes>
       </Router>
     </div>

@@ -48,7 +48,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               {/* Navigation Links */}
               <nav className="flex items-center gap-6">
                 <Link
-                  to="/about"
+                  to="/guide"
                   className="flex items-center text-sm text-gray-600 hover:text-indigo-600"
                 >
                   <svg
@@ -63,7 +63,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                       clipRule="evenodd"
                     />
                   </svg>
-                  About
+                  Guide
                 </Link>
 
                 <Link

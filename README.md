@@ -114,3 +114,5 @@ Currently, the following models are supported:
 - `EdwinXhen/TinyBert_6Layer_MLM`: TinyBERT 6 Layer (6 layers, knowledge distilled from BERT)
 
 Additional models can be added by modifying the `MODEL_CONFIGS` in the backend's `models.py`.
+
+- [Documentation](docs/00-index.md) — Product requirements and navigation design.

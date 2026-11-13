@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Book, Brain, Network, LayoutGrid, GitBranch, BarChart2, Layers } from "lucide-react";
 
-const AboutPage: React.FC = () => {
+const GuidePage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50">
             {/* Consistent navbar */}
@@ -13,7 +13,7 @@ const AboutPage: React.FC = () => {
                         Back to Visualizer
                     </Link>
                     <h1 className="text-xl font-semibold text-gray-800">
-                        About BERT Attention Visualization
+                        BERT Attention Guide
                     </h1>
                     <div className="w-28"></div> {/* Empty div for balance */}
                 </div>
@@ -278,4 +278,4 @@ const AboutPage: React.FC = () => {
     );
 };
 
-export default AboutPage; 
+export default GuidePage;
